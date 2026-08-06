@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LSG Sky Chefs - Controle de Frota GIG</title>
+  <style>
+    :root {
+      --primary: #002b49;
+      --primary-light: #00406c;
+      --secondary: #0066b2;
+      --accent: #e30613;
+      --success: #10b981;
+      --success-dark: #059669;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      background-color: var(--primary);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 12px;
+      border-bottom: 4px solid var(--accent);
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .brand h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .brand p {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    .live-badge {
+      background-color: rgba(255, 255, 255, 0.15);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--bg);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background-color: #fff;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--secondary);
+    }
+
+    /* ESTILOS DO MARCADOR DE COMBUSTÍVEL INTERATIVO */
+    .gauge-wrapper {
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .gauge-svg {
+      width: 200px;
+      height: 120px;
+      cursor: pointer;
+    }
+
+    .gauge-label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 4px;
+    }
+
+    .btn {
+      padding: 12px 20px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary { background-color: var(--primary); color: white; }
+    .btn-primary:hover { background-color: var(--primary-light); }
+    .btn-success { background-color: var(--success); color: white; }
+    .btn-success:hover { background-color: var(--success-dark); }
+    .btn-submit { margin-top: 20px; width: 100%; }
+
+    /* Tabela */
+    .table-container { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background-color: var(--bg);
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 12px 14px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    td {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .badge-status {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .status-active { background-color: #fef3c7; color: #92400e; }
+    .status-completed { background-color: #d1fae5; color: #065f46; }
+
+    /* Modal Popup */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      background-color: var(--primary);
+      color: white;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 3px solid var(--accent);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .info-summary {
+      background-color: var(--bg);
+      padding: 12px 16px;
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .info-summary div strong {
+      color: var(--text-muted);
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #1e293b;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1100;
+    }
+
+    .toast.active {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <header>
+      <div class="brand">
+        <h1>LSG Sky Chefs</h1>
+        <p>Controle de Veículos Pequenos – Aeroporto GIG</p>
+      </div>
+      <div class="live-badge">
+        <span class="dot"></span>
+        <span id="vehicleCounter">0 em trânsito</span>
+      </div>
+    </header>
+
+    <!-- Formulário de Saída -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>🚩</span>
+          <span>Registrar Saída de Veículo</span>
+        </div>
+      </div>
+
+      <form id="saidaForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="saidaData">Data</label>
+            <input type="date" id="saidaData" required>
+          </div>
+
+          <div class="form-group">
+            <label for="saidaVeiculo">Veículo</label>
+            <select id="saidaVeiculo" required>
+              <option value="">Selecione...</option>
+              <option value="VTR 01">VTR 01</option>
+              <option value="VTR 03">VTR 03</option>
+              <option value="VTR 05">VTR 05</option>
+              <option value="VTR 07">VTR 07</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="saidaNome">Motorista / Responsável</label>
+            <input type="text" id="saidaNome" placeholder="Ex: Edson" required>
+          </div>
+
+          <div class="form-group">
+            <label for="saidaHorario">Horário de Saída</label>
+            <input type="time" id="saidaHorario" required>
+          </div>
+
+          <div class="form-group">
+            <label for="saidaKm">KM Atual (Saída)</label>
+            <input type="number" id="saidaKm" placeholder="Ex: 183936" required>
+          </div>
+
+          <!-- Marcador Interativo de Saída -->
+          <div class="form-group full-width">
+            <label>Nível de Combustível (Arraste o ponteiro)</label>
+            <div class="gauge-wrapper" id="gaugeSaidaContainer">
+              <svg class="gauge-svg" id="gaugeSaidaSvg" viewBox="0 0 200 120">
+                <!-- Arco Principal -->
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+                <!-- Marcas Traço Vermelho (E) e Cheio (F) -->
+                <line x1="20" y1="100" x2="35" y2="92" stroke="#e30613" stroke-width="4" stroke-linecap="round"/>
+                <line x1="180" y1="100" x2="165" y2="92" stroke="#e30613" stroke-width="4" stroke-linecap="round"/>
+                <!-- Marcadores Intermediários -->
+                <line x1="43" y1="57" x2="54" y2="65" stroke="#1e293b" stroke-width="3"/>
+                <line x1="100" y1="20" x2="100" y2="35" stroke="#1e293b" stroke-width="4"/>
+                <line x1="157" y1="57" x2="146" y2="65" stroke="#1e293b" stroke-width="3"/>
+                <!-- Texto E e F -->
+                <text x="22" y="118" font-size="18" font-weight="900" fill="#1e293b">E</text>
+                <text x="168" y="118" font-size="18" font-weight="900" fill="#1e293b">F</text>
+                <!-- Ícone da Bomba -->
+                <g transform="translate(90, 50) scale(0.7)">
+                  <path d="M3 2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="none" stroke="#1e293b" stroke-width="2"/>
+                  <path d="M15 6h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V8l-3-3" fill="none" stroke="#1e293b" stroke-width="2"/>
+                </g>
+                <!-- Centro do Ponteiro -->
+                <circle cx="100" cy="100" r="12" fill="#1e293b"/>
+                <!-- Ponteiro Vermelho (Inicia no Meio) -->
+                <g id="needleGroupSaida" transform="rotate(0, 100, 100)">
+                  <line x1="100" y1="100" x2="25" y2="100" stroke="#e30613" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="100" cy="100" r="6" fill="#e30613"/>
+                </g>
+              </svg>
+              <div class="gauge-label" id="gaugeSaidaLabel">1/2 (50%)</div>
+              <input type="hidden" id="saidaCombustivel" value="1/2 (50%)">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-submit">
+          <span>📤 Confirmar Saída do Veículo</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Histórico de Veículos -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>📋</span>
+          <span>Histórico de Veículos</span>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Data/Hora Saída</th>
+              <th>Veículo</th>
+              <th>Motorista</th>
+              <th>KM / Comb. Saída</th>
+              <th>Status / Retorno</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="historicoBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Janela Pop-up (Modal) para Retorno -->
+  <div class="modal-overlay" id="modalRetorno">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">🏁 Registrar Retorno do Veículo</div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="retornoForm">
+        <div class="modal-body">
+          <input type="hidden" id="retornoRecordId">
+
+          <div class="info-summary">
+            <div>
+              <strong>Veículo</strong>
+              <span id="modalVeiculoTarget">-</span>
+            </div>
+            <div>
+              <strong>Motorista</strong>
+              <span id="modalNomeTarget">-</span>
+            </div>
+            <div>
+              <strong>Horário de Saída</strong>
+              <span id="modalHoraSaidaTarget">-</span>
+            </div>
+            <div>
+              <strong>KM de Saída</strong>
+              <span id="modalKmSaidaTarget">-</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="retornoHorario">Horário de Retorno / Chegada</label>
+            <input type="time" id="retornoHorario" required>
+          </div>
+
+          <div class="form-group">
+            <label for="retornoKm">KM de Retorno / Chegada</label>
+            <input type="number" id="retornoKm" placeholder="Ex: 184006" required>
+          </div>
+
+          <!-- Marcador Interativo de Retorno -->
+          <div class="form-group">
+            <label>Nível de Combustível no Retorno (Arraste o ponteiro)</label>
+            <div class="gauge-wrapper" id="gaugeRetornoContainer">
+              <svg class="gauge-svg" id="gaugeRetornoSvg" viewBox="0 0 200 120">
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+                <line x1="20" y1="100" x2="35" y2="92" stroke="#e30613" stroke-width="4" stroke-linecap="round"/>
+                <line x1="180" y1="100" x2="165" y2="92" stroke="#e30613" stroke-width="4" stroke-linecap="round"/>
+                <line x1="43" y1="57" x2="54" y2="65" stroke="#1e293b" stroke-width="3"/>
+                <line x1="100" y1="20" x2="100" y2="35" stroke="#1e293b" stroke-width="4"/>
+                <line x1="157" y1="57" x2="146" y2="65" stroke="#1e293b" stroke-width="3"/>
+                <text x="22" y="118" font-size="18" font-weight="900" fill="#1e293b">E</text>
+                <text x="168" y="118" font-size="18" font-weight="900" fill="#1e293b">F</text>
+                <g transform="translate(90, 50) scale(0.7)">
+                  <path d="M3 2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="none" stroke="#1e293b" stroke-width="2"/>
+                  <path d="M15 6h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V8l-3-3" fill="none" stroke="#1e293b" stroke-width="2"/>
+                </g>
+                <circle cx="100" cy="100" r="12" fill="#1e293b"/>
+                <g id="needleGroupRetorno" transform="rotate(0, 100, 100)">
+                  <line x1="100" y1="100" x2="25" y2="100" stroke="#e30613" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="100" cy="100" r="6" fill="#e30613"/>
+                </g>
+              </svg>
+              <div class="gauge-label" id="gaugeRetornoLabel">1/2 (50%)</div>
+              <input type="hidden" id="retornoCombustivel" value="1/2 (50%)">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">
+            <span>📥 Confirmar Retorno do Veículo</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <span id="toastMsg">Confirmação</span>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGrfIj2JYZZ1PJwi8giGdOzz_-mPFvNqVc4F5zWF_9-O3_m5SADvLMUHscc8VUE_cSNQ/exec";
+
+    let registros = JSON.parse(localStorage.getItem("lsg_frota_registros")) || [];
+
+    // --- LÓGICA DO MARCADOR DE COMBUSTÍVEL INTERATIVO ---
+    function setupGauge(svgId, needleId, labelId, hiddenInputId) {
+      const svg = document.getElementById(svgId);
+      const needleGroup = document.getElementById(needleId);
+      const label = document.getElementById(labelId);
+      const input = document.getElementById(hiddenInputId);
+
+      let isDragging = false;
+
+      function updateGauge(event) {
+        const rect = svg.getBoundingClientRect();
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + (rect.height * 100 / 120); // Ponto de rotação do ponteiro (cy=100)
+
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+
+        // Calcula o ângulo em graus (-180 a 0 no topo)
+        let angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+        
+        // Limita o movimento ao semi-círculo superior (de -180° a 0°)
+        if (angleDeg > 0) {
+          angleDeg = dx < 0 ? -180 : 0;
+        }
+
+        // Converte o ângulo para Porcentagem (0% no -180° / 100% no 0°)
+        let pct = Math.round(((angleDeg + 180) / 180) * 100);
+        pct = Math.max(0, Math.min(100, pct));
+
+        // Ajusta a rotação visual da agulha
+        const rotationAngle = (pct / 100) * 180;
+        needleGroup.setAttribute('transform', `rotate(${rotationAngle}, 100, 100)`);
+
+        // Traduz em frações/texto amigável
+        let textVal = `${pct}%`;
+        if (pct === 0) textVal = "Vazio (0%)";
+        else if (pct === 25) textVal = "1/4 (25%)";
+        else if (pct === 50) textVal = "1/2 (50%)";
+        else if (pct === 75) textVal = "3/4 (75%)";
+        else if (pct === 100) textVal = "Cheio (100%)";
+        else textVal = `${pct}%`;
+
+        label.innerText = textVal;
+        input.value = textVal;
+      }
+
+      svg.addEventListener('mousedown', (e) => { isDragging = true; updateGauge(e); });
+      window.addEventListener('mousemove', (e) => { if (isDragging) updateGauge(e); });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      svg.addEventListener('touchstart', (e) => { isDragging = true; updateGauge(e); });
+      window.addEventListener('touchmove', (e) => { if (isDragging) updateGauge(e); });
+      window.addEventListener('touchend', () => { isDragging = false; });
+    }
+
+    // Inicializa os dois marcadores (Saída e Retorno)
+    setupGauge('gaugeSaidaSvg', 'needleGroupSaida', 'gaugeSaidaLabel', 'saidaCombustivel');
+    setupGauge('gaugeRetornoSvg', 'needleGroupRetorno', 'gaugeRetornoLabel', 'retornoCombustivel');
+
+    // --- FUNÇÕES DA APLICAÇÃO ---
+    function initDefaultDateTime() {
+      const now = new Date();
+      document.getElementById('saidaData').valueAsDate = now;
+      const horaStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('saidaHorario').value = horaStr;
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.add('active');
+      setTimeout(() => toast.classList.remove('active'), 3000);
+    }
+
+    function saveAndRender() {
+      localStorage.setItem("lsg_frota_registros", JSON.stringify(registros));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const tbody = document.getElementById('historicoBody');
+      const counter = document.getElementById('vehicleCounter');
+      tbody.innerHTML = '';
+
+      const pendentes = registros.filter(r => r.status === 'EM_TRANSITO');
+      counter.innerText = `${pendentes.length} em trânsito`;
+
+      if (registros.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum veículo registrado hoje.</td></tr>`;
+        return;
+      }
+
+      const sorted = [...registros].reverse();
+
+      sorted.forEach(item => {
+        const tr = document.createElement('tr');
+        const isEmTransito = item.status === 'EM_TRANSITO';
+
+        tr.innerHTML = `
+          <td><strong>${item.data}</strong><br><small style="color:var(--text-muted)">Saída: ${item.horarioSaida}</small></td>
+          <td><strong>${item.veiculo}</strong></td>
+          <td>${item.nome}</td>
+          <td>${item.kmSaida} km <br><small style="color:var(--text-muted)">Comb: ${item.combustivelSaida}</small></td>
+          <td>
+            ${isEmTransito 
+              ? `<span class="badge-status status-active">Em Trânsito</span>` 
+              : `<span class="badge-status status-completed">Concluído</span><br><small style="color:var(--text-muted)">Ret: ${item.horarioChegada} (${item.kmChegada} km)</small>`}
+          </td>
+          <td>
+            ${isEmTransito 
+              ? `<button class="btn btn-success" style="padding: 6px 12px; font-size: 0.8rem;" onclick="openModal('${item.id}')">🏁 Retorno</button>` 
+              : `<span style="color: var(--success); font-weight: bold;">✓ Finalizado</span>`}
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openModal(recordId) {
+      const record = registros.find(r => r.id === recordId);
+      if (!record) return;
+
+      document.getElementById('retornoRecordId').value = record.id;
+      document.getElementById('modalVeiculoTarget').innerText = record.veiculo;
+      document.getElementById('modalNomeTarget').innerText = record.nome;
+      document.getElementById('modalHoraSaidaTarget').innerText = record.horarioSaida;
+      document.getElementById('modalKmSaidaTarget').innerText = record.kmSaida + ' km';
+
+      const now = new Date();
+      const horaStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('retornoHorario').value = horaStr;
+      document.getElementById('retornoKm').value = '';
+
+      document.getElementById('modalRetorno').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modalRetorno').classList.remove('active');
+    }
+
+    function sendToGoogleSheets(dataObj) {
+      if (!SCRIPT_URL || SCRIPT_URL.includes("SUA_URL")) return;
+
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataObj)
+      }).catch(err => console.error("Erro no envio:", err));
+    }
+
+    document.getElementById('saidaForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const newRecord = {
+        id: 'REC_' + Date.now(),
+        tipoOperacao: 'SAIDA',
+        data: document.getElementById('saidaData').value,
+        veiculo: document.getElementById('saidaVeiculo').value,
+        nome: document.getElementById('saidaNome').value,
+        horarioSaida: document.getElementById('saidaHorario').value,
+        kmSaida: document.getElementById('saidaKm').value,
+        combustivelSaida: document.getElementById('saidaCombustivel').value,
+        status: 'EM_TRANSITO',
+        horarioChegada: '',
+        kmChegada: '',
+        combustivelChegada: ''
+      };
+
+      registros.push(newRecord);
+      saveAndRender();
+      sendToGoogleSheets(newRecord);
+
+      document.getElementById('saidaKm').value = '';
+      initDefaultDateTime();
+
+      showToast(`Saída do ${newRecord.veiculo} registrada!`);
+    });
+
+    document.getElementById('retornoForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const id = document.getElementById('retornoRecordId').value;
+      const record = registros.find(r => r.id === id);
+
+      if (record) {
+        record.status = 'CONCLUIDO';
+        record.tipoOperacao = 'CHEGADA';
+        record.horarioChegada = document.getElementById('retornoHorario').value;
+        record.kmChegada = document.getElementById('retornoKm').value;
+        record.combustivelChegada = document.getElementById('retornoCombustivel').value;
+
+        saveAndRender();
+        sendToGoogleSheets(record);
+        closeModal();
+        showToast(`Retorno do ${record.veiculo} finalizado com sucesso!`);
+      }
+    });
+
+    initDefaultDateTime();
+    renderHistory();
+  </script>
+</body>
+</html>
