@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Gestor - Controle de Viaturas LSG GIG</title>
+  <link rel="icon" href="../icone lsg.ico" type="image/x-icon" />
+
+  <!-- Bibliotecas externas para relatórios, gráficos e ícones -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-body: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --border-color: #e5e7eb;
+      --primary: #002b49;
+      --primary-hover: #00406c;
+      --accent: #e30613;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --table-header: #f8fafc;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+    }
+
+    [data-theme="dark"] {
+      --bg-body: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --accent: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --table-header: #0f172a;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      padding: 24px 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 20px 24px;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      border-top: 5px solid var(--accent);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-logo {
+      height: 48px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .header-title p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .btn-nav {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* KPIs Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .kpi-title {
+      font-size: 0.825rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Filters Layout */
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    input, select {
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-excel { background-color: #107c41; color: white; }
+    .btn-pdf { background-color: var(--accent); color: white; }
+    .btn-reset { background-color: var(--text-muted); color: white; }
+
+    /* Table */
+    .table-container { overflow-x: auto; margin-top: 16px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    th {
+      background-color: var(--table-header);
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 12px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-transito { background-color: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    .badge-concluido { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <header>
+      <div class="header-brand">
+        <img src="../lsg logo.png" alt="LSG Logo" class="header-logo" id="logoImg">
+        <div class="header-title">
+          <h1>Painel de Controle do Gestor - Base GIG</h1>
+          <p>Relatórios, Indicadores e Monitoramento de Frota</p>
+        </div>
+      </div>
+      <a href="../" class="btn-nav">⬅️ Voltar ao Registro</a>
+    </header>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-title">Total de Saídas</span>
+        <span class="kpi-value" id="kpiTotal">0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Em Trânsito</span>
+        <span class="kpi-value" id="kpiTransito" style="color: var(--warning);">0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Concluídos</span>
+        <span class="kpi-value" id="kpiConcluidos" style="color: var(--success);">0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">KM Percorridos</span>
+        <span class="kpi-value" id="kpiKmTotal">0 km</span>
+      </div>
+    </div>
+
+    <!-- Filtros e Exportações -->
+    <div class="card">
+      <div class="card-title">🔍 Filtros e Relatórios</div>
+
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Data Inicial</label>
+          <input type="date" id="filterDataInicio" onchange="aplicarFiltros()">
+        </div>
+        <div class="filter-group">
+          <label>Data Final</label>
+          <input type="date" id="filterDataFim" onchange="aplicarFiltros()">
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select id="filterStatus" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+            <option value="EM_TRANSITO">Em Trânsito</option>
+            <option value="CONCLUIDO">Concluído</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Veículo / Placa</label>
+          <input type="text" id="filterVeiculo" placeholder="Ex: VTR 01" oninput="aplicarFiltros()">
+        </div>
+        <div class="filter-group">
+          <label>Motorista</label>
+          <input type="text" id="filterMotorista" placeholder="Nome do motorista..." oninput="aplicarFiltros()">
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn btn-excel" onclick="exportarExcel()">📊 Exportar Excel (.xlsx)</button>
+        <button class="btn btn-pdf" onclick="exportarPDF()">📄 Gerar PDF Oficial</button>
+        <button class="btn btn-reset" onclick="limparFiltros()">🔄 Limpar Filtros</button>
+      </div>
+    </div>
+
+    <!-- Tabela de Dados Filtrados -->
+    <div class="card">
+      <div class="card-title">📋 Registros Filtrados</div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Status</th>
+              <th>Veículo</th>
+              <th>Motorista</th>
+              <th>Saída (Data / Hora)</th>
+              <th>Retorno (Data / Hora)</th>
+              <th>Controlador (Saída / Retorno)</th>
+              <th>Obs</th>
+            </tr>
+          </thead>
+          <tbody id="gestorTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let registrosBase = JSON.parse(localStorage.getItem("lsg_frota_registros")) || [];
+    let registrosFiltrados = [];
+
+    function renderDashboard() {
+      aplicarFiltros();
+    }
+
+    function aplicarFiltros() {
+      const dtInicio = document.getElementById('filterDataInicio').value;
+      const dtFim = document.getElementById('filterDataFim').value;
+      const status = document.getElementById('filterStatus').value;
+      const veiculo = document.getElementById('filterVeiculo').value.toLowerCase();
+      const motorista = document.getElementById('filterMotorista').value.toLowerCase();
+
+      registrosFiltrados = registrosBase.filter(r => {
+        if (dtInicio && r.data < dtInicio) return false;
+        if (dtFim && r.data > dtFim) return false;
+        if (status && r.status !== status) return false;
+        if (veiculo && !(r.veiculo || '').toLowerCase().includes(veiculo)) return false;
+        if (motorista && !(r.nome || '').toLowerCase().includes(motorista)) return false;
+        return true;
+      });
+
+      atualizarKPIs();
+      renderTable();
+    }
+
+    function atualizarKPIs() {
+      document.getElementById('kpiTotal').innerText = registrosFiltrados.length;
+      
+      const emTransito = registrosFiltrados.filter(r => r.status === 'EM_TRANSITO').length;
+      const concluidos = registrosFiltrados.filter(r => r.status === 'CONCLUIDO').length;
+      
+      document.getElementById('kpiTransito').innerText = emTransito;
+      document.getElementById('kpiConcluidos').innerText = concluidos;
+
+      let totalKm = 0;
+      registrosFiltrados.forEach(r => {
+        if (r.kmChegada && r.kmSaida) {
+          const diff = parseInt(r.kmChegada) - parseInt(r.kmSaida);
+          if (diff > 0) totalKm += diff;
+        }
+      });
+      document.getElementById('kpiKmTotal').innerText = totalKm + " km";
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('gestorTableBody');
+      tbody.innerHTML = '';
+
+      if (registrosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
+        return;
+      }
+
+      [...registrosFiltrados].reverse().forEach((r, idx) => {
+        const isEmTransito = r.status === 'EM_TRANSITO';
+        const displayId = r.id ? r.id.replace('REC_', '') : (idx + 1);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${displayId}</strong></td>
+          <td><span class="badge ${isEmTransito ? 'badge-transito' : 'badge-concluido'}">${isEmTransito ? 'Em Trânsito' : 'Concluído'}</span></td>
+          <td>${r.veiculo}</td>
+          <td>${r.nome}</td>
+          <td>${r.data} ${r.horarioSaida}</td>
+          <td>${r.horarioChegada ? r.data + ' ' + r.horarioChegada : '-'}</td>
+          <td><small>S:</small> ${r.controladorSaida || '-'}<br><small>R:</small> ${r.controladorChegada || '-'}</td>
+          <td>${r.obsSaida || r.obsChegada || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function limparFiltros() {
+      document.getElementById('filterDataInicio').value = '';
+      document.getElementById('filterDataFim').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterVeiculo').value = '';
+      document.getElementById('filterMotorista').value = '';
+      aplicarFiltros();
+    }
+
+    // --- EXPORTAÇÃO EXCEL ---
+    function exportarExcel() {
+      if (registrosFiltrados.length === 0) {
+        alert('Não há dados para exportar com os filtros atuais.');
+        return;
+      }
+
+      const excelData = registrosFiltrados.map(r => ({
+        "ID": r.id,
+        "Status": r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído',
+        "Veículo": r.veiculo,
+        "Motorista": r.nome,
+        "Data Saída": r.data,
+        "Horário Saída": r.horarioSaida,
+        "KM Saída": r.kmSaida,
+        "Controlador Saída": r.controladorSaida,
+        "Horário Retorno": r.horarioChegada || '',
+        "KM Retorno": r.kmChegada || '',
+        "Controlador Retorno": r.controladorChegada || '',
+        "Observações": r.obsSaida || r.obsChegada || ''
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Movimentacao_Viaturas");
+
+      const dataHoje = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `relatorio_veiculos_${dataHoje}.xlsx`);
+    }
+
+    // --- EXPORTAÇÃO PDF OFICIAL NO MODELO LSG SKY CHEFS ---
+    function exportarPDF() {
+      if (registrosFiltrados.length === 0) {
+        alert('Não há dados para gerar o relatório PDF.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+      const img = document.getElementById('logoImg');
+      if (img && img.complete) {
+        try {
+          doc.addImage(img, 'PNG', 14, 10, 30, 15);
+        } catch (e) {
+          console.warn("Logo não carregado no PDF", e);
+        }
+      }
+
+      // Título e subcabeçalho
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 43, 73);
+      doc.text("LSG Sky Chefs - Relatório de Movimentação de Veículos (Base GIG)", 50, 18);
+
+      const agora = new Date();
+      const dataGeracao = agora.toLocaleString('pt-BR');
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Gerado em: ${dataGeracao} | Total de registros: ${registrosFiltrados.length}`, 50, 24);
+
+      // Mapeamento idêntico de colunas do modelo fornecido
+      const tableColumns = [
+        "Status", "ID", "Veículo", "Motorista", "Auxiliares", "Saída", 
+        "Controlador de Acesso Saída", "Retorno", "Controlador de Saída Retorno", "Obs"
+      ];
+
+      const tableRows = registrosFiltrados.map((r, i) => {
+        const displayId = r.id ? r.id.replace('REC_', '') : (i + 1);
+        return [
+          r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído',
+          displayId,
+          r.veiculo || '-',
+          r.nome || '-',
+          '-',
+          `${r.data}\n${r.horarioSaida}`,
+          r.controladorSaida || '-',
+          r.horarioChegada ? `${r.data}\n${r.horarioChegada}` : '-',
+          r.controladorChegada || '-',
+          r.obsSaida || r.obsChegada || '-'
+        ];
+      });
+
+      doc.autoTable({
+        startY: 30,
+        head: [tableColumns],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [0, 43, 73],
+          textColor: [255, 255, 255],
+          fontSize: 8,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        bodyStyles: {
+          fontSize: 7.5,
+          valign: 'middle'
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        margin: { top: 30, left: 14, right: 14, bottom: 15 },
+        didDrawPage: function (data) {
+          // Rodapé do PDF
+          const str = `Página ${doc.internal.getNumberOfPages()}`;
+          doc.setFontSize(8);
+          doc.setTextColor(150);
+          doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+        }
+      });
+
+      const dataHoje = new Date().toISOString().split('T')[0];
+      doc.save(`relatorio_veiculos_${dataHoje}.pdf`);
+    }
+
+    renderDashboard();
+  </script>
+</body>
+</html>
