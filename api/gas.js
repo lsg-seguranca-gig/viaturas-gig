@@ -1,10 +1,8 @@
 // /api/gas.js
-// Handler para Serverless Functions (Vercel, Netlify, etc.)
-
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGrfIj2JYZZ1PJwi8giGdOzz_-mPFvNqVc4F5zWF_9-O3_m5SADvLMUHscc8VUE_cSNQ/exec";
+// Handler Serverless para Vercel / Node.js
 
 export default async function handler(req, res) {
-  // Configurações de CORS para aceitar chamadas do frontend
+  // Configuração de CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -13,21 +11,30 @@ export default async function handler(req, res) {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
 
-  // Trata a requisição OPTIONS (Preflight)
+  // Trata a requisição preflight (OPTIONS)
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
+  // Leitura da variável de ambiente configurada na Vercel / .env.local
+  const SCRIPT_URL = process.env.GAS_URL;
+
+  if (!SCRIPT_URL) {
+    return res.status(500).json({ 
+      error: 'Variável de ambiente GAS_URL não encontrada. Configure-a na Vercel ou no arquivo .env.local.' 
+    });
+  }
+
   try {
-    // 1. REQUISIÇÃO GET: Buscar listas de Veículos, Motoristas e Controladores
+    // 1. REQUISIÇÃO GET: Busca as listas de Veículos, Motoristas e Controladores
     if (req.method === 'GET') {
       const response = await fetch(SCRIPT_URL);
       const data = await response.json();
       return res.status(200).json(data);
     }
 
-    // 2. REQUISIÇÃO POST: Enviar novo registro de Saída ou Retorno
+    // 2. REQUISIÇÃO POST: Envia registros de Saída e Retorno para o Google Sheets
     if (req.method === 'POST') {
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
@@ -41,7 +48,7 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // Método não suportado
+    // Método HTTP não permitido
     return res.status(405).json({ error: 'Método não permitido.' });
 
   } catch (error) {
