@@ -348,6 +348,13 @@
           </div>
 
           <div class="form-group">
+            <label for="saidaControlador">Controlador (Saída)</label>
+            <select id="saidaControlador" required>
+              <option value="">Carregando controladores...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label for="saidaHorario">Horário de Saída</label>
             <input type="time" id="saidaHorario" required>
           </div>
@@ -362,36 +369,27 @@
             <label>Nível de Combustível (Arraste o ponteiro)</label>
             <div class="gauge-wrapper" id="gaugeSaidaContainer">
               <svg class="gauge-svg" id="gaugeSaidaSvg" viewBox="0 0 200 120">
-                <!-- Arco Cinza de Fundo -->
                 <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e2e8f0" stroke-width="10" stroke-linecap="round"/>
-                <!-- Faixa da RESERVA em Vermelho (0% a 25%) -->
                 <path d="M 20 100 A 80 80 0 0 1 43.43 43.43" fill="none" stroke="#e30613" stroke-width="10" stroke-linecap="round"/>
-                <!-- Arco Preto Principal -->
                 <path d="M 43.43 43.43 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="6" stroke-linecap="round"/>
                 
-                <!-- Marcadores Traço E / F -->
                 <line x1="20" y1="100" x2="35" y2="92" stroke="#e30613" stroke-width="4" stroke-linecap="round"/>
                 <line x1="180" y1="100" x2="165" y2="92" stroke="#1e293b" stroke-width="4" stroke-linecap="round"/>
                 
-                <!-- Traços Intermediários -->
                 <line x1="43" y1="57" x2="54" y2="65" stroke="#e30613" stroke-width="3"/>
                 <line x1="100" y1="20" x2="100" y2="35" stroke="#1e293b" stroke-width="4"/>
                 <line x1="157" y1="57" x2="146" y2="65" stroke="#1e293b" stroke-width="3"/>
                 
-                <!-- Textos -->
                 <text x="22" y="118" font-size="18" font-weight="900" fill="#e30613">E</text>
                 <text x="168" y="118" font-size="18" font-weight="900" fill="#1e293b">F</text>
                 
-                <!-- Ícone da Bomba -->
                 <g transform="translate(90, 50) scale(0.7)">
                   <path d="M3 2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="none" stroke="#1e293b" stroke-width="2"/>
                   <path d="M15 6h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V8l-3-3" fill="none" stroke="#1e293b" stroke-width="2"/>
                 </g>
                 
-                <!-- Centro do Ponteiro -->
                 <circle cx="100" cy="100" r="12" fill="#1e293b"/>
                 
-                <!-- Ponteiro Vermelho -->
                 <g id="needleGroupSaida" transform="rotate(90, 100, 100)">
                   <line x1="100" y1="100" x2="25" y2="100" stroke="#e30613" stroke-width="5" stroke-linecap="round"/>
                   <circle cx="100" cy="100" r="6" fill="#e30613"/>
@@ -423,8 +421,8 @@
           <thead>
             <tr>
               <th>Data/Hora Saída</th>
-              <th>Veículo</th>
-              <th>Motorista</th>
+              <th>Veículo / Motorista</th>
+              <th>Controladores</th>
               <th>KM / Comb. Saída</th>
               <th>Status / Retorno</th>
               <th>Ação</th>
@@ -464,6 +462,13 @@
               <strong>KM de Saída</strong>
               <span id="modalKmSaidaTarget">-</span>
             </div>
+          </div>
+
+          <div class="form-group">
+            <label for="retornoControlador">Controlador (Retorno)</label>
+            <select id="retornoControlador" required>
+              <option value="">Carregando controladores...</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -531,31 +536,37 @@
     function loadCadastros() {
       if (!SCRIPT_URL || SCRIPT_URL.includes("SUA_URL")) return;
 
-      // Callback global para receber os dados do Google Apps Script
       window.handleCadastrosResponse = function(data) {
         const selectVeiculo = document.getElementById('saidaVeiculo');
         const selectNome = document.getElementById('saidaNome');
+        const selectControladorSaida = document.getElementById('saidaControlador');
+        const selectControladorRetorno = document.getElementById('retornoControlador');
 
         if (data.veiculos && data.veiculos.length > 0) {
           selectVeiculo.innerHTML = '<option value="">Selecione o veículo...</option>';
-          data.veiculos.forEach(v => {
-            selectVeiculo.innerHTML += `<option value="${v}">${v}</option>`;
-          });
+          data.veiculos.forEach(v => selectVeiculo.innerHTML += `<option value="${v}">${v}</option>`);
         } else {
           selectVeiculo.innerHTML = '<option value="">Nenhum veículo encontrado</option>';
         }
 
         if (data.motoristas && data.motoristas.length > 0) {
           selectNome.innerHTML = '<option value="">Selecione o motorista...</option>';
-          data.motoristas.forEach(m => {
-            selectNome.innerHTML += `<option value="${m}">${m}</option>`;
-          });
+          data.motoristas.forEach(m => selectNome.innerHTML += `<option value="${m}">${m}</option>`);
         } else {
           selectNome.innerHTML = '<option value="">Nenhum motorista encontrado</option>';
         }
+
+        if (data.controladores && data.controladores.length > 0) {
+          let options = '<option value="">Selecione o controlador...</option>';
+          data.controladores.forEach(c => options += `<option value="${c}">${c}</option>`);
+          selectControladorSaida.innerHTML = options;
+          selectControladorRetorno.innerHTML = options;
+        } else {
+          selectControladorSaida.innerHTML = '<option value="">Nenhum controlador encontrado</option>';
+          selectControladorRetorno.innerHTML = '<option value="">Nenhum controlador encontrado</option>';
+        }
       };
 
-      // Injeta dynamic script element para contornar restrições de CORS
       const script = document.createElement('script');
       script.src = `${SCRIPT_URL}?callback=handleCadastrosResponse`;
       document.body.appendChild(script);
@@ -651,8 +662,11 @@
 
         tr.innerHTML = `
           <td><strong>${item.data}</strong><br><small style="color:var(--text-muted)">Saída: ${item.horarioSaida}</small></td>
-          <td><strong>${item.veiculo}</strong></td>
-          <td>${item.nome}</td>
+          <td><strong>${item.veiculo}</strong><br><small style="color:var(--text-muted)">Motorista: ${item.nome}</small></td>
+          <td>
+            <small style="color:var(--text-muted)">Saída:</small> ${item.controladorSaida || '-'}<br>
+            <small style="color:var(--text-muted)">Chegada:</small> ${item.controladorChegada || '-'}
+          </td>
           <td>${item.kmSaida} km <br><small style="color:var(--text-muted)">Comb: ${item.combustivelSaida}</small></td>
           <td>
             ${isEmTransito 
@@ -708,6 +722,7 @@
         data: document.getElementById('saidaData').value,
         veiculo: document.getElementById('saidaVeiculo').value,
         nome: document.getElementById('saidaNome').value,
+        controladorSaida: document.getElementById('saidaControlador').value,
         horarioSaida: document.getElementById('saidaHorario').value,
         kmSaida: document.getElementById('saidaKm').value,
         combustivelSaida: document.getElementById('saidaCombustivel').value,
@@ -731,6 +746,7 @@
 
       if (record) {
         record.status = 'CONCLUIDO';
+        record.controladorChegada = document.getElementById('retornoControlador').value;
         record.horarioChegada = document.getElementById('retornoHorario').value;
         record.kmChegada = document.getElementById('retornoKm').value;
         record.combustivelChegada = document.getElementById('retornoCombustivel').value;
