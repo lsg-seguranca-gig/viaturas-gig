@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Saída e Retorno de Viaturas Pequenas - Base GIG</title>
+  <link rel="icon" href="icone lsg.ico" type="image/x-icon" />
   <style>
     :root {
       --bg-body: #f4f6f9;
@@ -288,7 +289,7 @@
     .status-active { background-color: rgba(245, 158, 11, 0.15); color: #d97706; }
     .status-completed { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
 
-    /* --- CONFIGURAÇÕES REVISADAS DA JANELA MODAL --- */
+    /* --- CSS REVISADO DO MODAL (CORREÇÃO DE ROLAGEM E VISIBILIDADE) --- */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -297,7 +298,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 16px;
+      padding: 12px;
       z-index: 1000;
       opacity: 0;
       visibility: hidden;
@@ -313,13 +314,14 @@
       background-color: var(--card-bg);
       border-radius: 16px;
       width: 100%;
-      max-width: 500px;
-      max-height: 90vh; /* Mantém todo o modal visível na viewport */
+      max-width: 520px;
+      max-height: 85dvh; /* Suporta com precisão navegadores mobile */
+      max-height: 85vh;
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
-      overflow: hidden;
       border: 1px solid var(--border-color);
+      overflow: hidden;
     }
 
     .modal-header {
@@ -330,7 +332,7 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: 3px solid var(--accent);
-      flex-shrink: 0;
+      flex-shrink: 0; /* Impede o cabeçalho de encolher */
     }
 
     .modal-close {
@@ -339,38 +341,54 @@
       color: white;
       font-size: 1.5rem;
       cursor: pointer;
+      line-height: 1;
     }
 
-    .modal-body {
-      padding: 16px 20px;
+    /* Formulário interno gerencia o scroll do conteúdo */
+    .modal-form {
       display: flex;
       flex-direction: column;
+      overflow-y: auto; /* Força a barra de rolagem vertical */
+      min-height: 0;
+      padding: 16px 20px 24px 20px;
       gap: 12px;
-      overflow-y: auto; /* Permite rolagem suave caso a tela seja pequena */
     }
 
-    .modal-body .form-group {
+    /* Barra de rolagem estilizada para Webkit */
+    .modal-form::-webkit-scrollbar {
+      width: 8px;
+    }
+    .modal-form::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+    .modal-form::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 4px;
+    }
+
+    .modal-form .form-group {
       gap: 4px;
     }
 
-    .modal-body input, 
-    .modal-body select, 
-    .modal-body textarea {
-      padding: 8px 12px;
+    .modal-form input, 
+    .modal-form select, 
+    .modal-form textarea {
+      padding: 10px 12px;
       font-size: 0.9rem;
     }
 
-    .modal-body textarea {
+    .modal-form textarea {
       min-height: 50px;
     }
 
     #gaugeRetornoSvg {
-      width: 170px;
-      height: 100px;
+      width: 160px;
+      height: 90px;
     }
 
     #gaugeRetornoContainer {
-      padding: 10px;
+      padding: 8px;
     }
 
     .info-summary {
@@ -382,6 +400,7 @@
       gap: 6px;
       font-size: 0.85rem;
       border: 1px solid var(--border-color);
+      flex-shrink: 0;
     }
 
     .info-summary div strong {
@@ -389,6 +408,12 @@
       display: block;
       font-size: 0.7rem;
       text-transform: uppercase;
+    }
+
+    .btn-modal-submit {
+      width: 100%;
+      margin-top: 8px;
+      flex-shrink: 0; /* Garante que o botão nunca seja esmagado/cortado */
     }
 
     .toast {
@@ -548,89 +573,88 @@
     </div>
   </div>
 
-  <!-- Modal Retorno Ajustado -->
+  <!-- Modal Retorno Atualizado -->
   <div class="modal-overlay" id="modalRetorno">
     <div class="modal">
       <div class="modal-header">
         <div class="modal-title">🏁 Registrar Retorno do Veículo</div>
         <button class="modal-close" onclick="closeModal()">&times;</button>
       </div>
-      <form id="retornoForm">
-        <div class="modal-body">
-          <input type="hidden" id="retornoRecordId">
 
-          <div class="info-summary">
-            <div>
-              <strong>Veículo</strong>
-              <span id="modalVeiculoTarget">-</span>
-            </div>
-            <div>
-              <strong>Motorista</strong>
-              <span id="modalNomeTarget">-</span>
-            </div>
-            <div>
-              <strong>Horário Saída</strong>
-              <span id="modalHoraSaidaTarget">-</span>
-            </div>
-            <div>
-              <strong>KM Saída</strong>
-              <span id="modalKmSaidaTarget">-</span>
-            </div>
+      <form id="retornoForm" class="modal-form">
+        <input type="hidden" id="retornoRecordId">
+
+        <div class="info-summary">
+          <div>
+            <strong>Veículo</strong>
+            <span id="modalVeiculoTarget">-</span>
           </div>
-
-          <div class="form-group">
-            <label for="retornoControlador">Controlador (Retorno)</label>
-            <select id="retornoControlador" required>
-              <option value="">Carregando controladores...</option>
-            </select>
+          <div>
+            <strong>Motorista</strong>
+            <span id="modalNomeTarget">-</span>
           </div>
-
-          <div class="form-group">
-            <label for="retornoHorario">Horário de Retorno</label>
-            <input type="time" id="retornoHorario" required>
+          <div>
+            <strong>Horário Saída</strong>
+            <span id="modalHoraSaidaTarget">-</span>
           </div>
-
-          <div class="form-group">
-            <label for="retornoKm">KM de Retorno</label>
-            <input type="number" id="retornoKm" placeholder="Ex: 184006" required>
+          <div>
+            <strong>KM Saída</strong>
+            <span id="modalKmSaidaTarget">-</span>
           </div>
-
-          <div class="form-group">
-            <label for="retornoObs">Observações / Estado do Veículo (Retorno)</label>
-            <textarea id="retornoObs" placeholder="Anote avarias, alteração de itinerário ou observações do retorno..."></textarea>
-          </div>
-
-          <!-- Marcador Retorno -->
-          <div class="form-group">
-            <label>Nível de Combustível no Retorno (Arraste o ponteiro)</label>
-            <div class="gauge-wrapper" id="gaugeRetornoContainer">
-              <svg class="gauge-svg" id="gaugeRetornoSvg" viewBox="0 0 200 120">
-                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e2e8f0" stroke-width="10" stroke-linecap="round"/>
-                <path d="M 20 100 A 80 80 0 0 1 43.43 43.43" fill="none" stroke="#e30613" stroke-width="10" stroke-linecap="round"/>
-                <path d="M 43.43 43.43 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="6" stroke-linecap="round"/>
-                
-                <line x1="20" y1="100" x2="35" y2="92" stroke="#e30613" stroke-width="4" stroke-linecap="round"/>
-                <line x1="180" y1="100" x2="165" y2="92" stroke="#1e293b" stroke-width="4" stroke-linecap="round"/>
-                
-                <text x="22" y="118" font-size="18" font-weight="900" fill="#e30613">E</text>
-                <text x="168" y="118" font-size="18" font-weight="900" fill="#1e293b">F</text>
-                
-                <circle cx="100" cy="100" r="12" fill="#1e293b"/>
-                
-                <g id="needleGroupRetorno" transform="rotate(90, 100, 100)">
-                  <line x1="100" y1="100" x2="25" y2="100" stroke="#e30613" stroke-width="5" stroke-linecap="round"/>
-                  <circle cx="100" cy="100" r="6" fill="#e30613"/>
-                </g>
-              </svg>
-              <div class="gauge-label" id="gaugeRetornoLabel">1/2 (50%)</div>
-              <input type="hidden" id="retornoCombustivel" value="1/2 (50%)">
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 6px;">
-            <span>📥 Confirmar Retorno do Veículo</span>
-          </button>
         </div>
+
+        <div class="form-group">
+          <label for="retornoControlador">Controlador (Retorno)</label>
+          <select id="retornoControlador" required>
+            <option value="">Carregando controladores...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="retornoHorario">Horário de Retorno</label>
+          <input type="time" id="retornoHorario" required>
+        </div>
+
+        <div class="form-group">
+          <label for="retornoKm">KM de Retorno</label>
+          <input type="number" id="retornoKm" placeholder="Ex: 184006" required>
+        </div>
+
+        <div class="form-group">
+          <label for="retornoObs">Observações / Estado do Veículo (Retorno)</label>
+          <textarea id="retornoObs" placeholder="Anote avarias, alteração de itinerário ou observações do retorno..."></textarea>
+        </div>
+
+        <!-- Marcador Retorno -->
+        <div class="form-group">
+          <label>Nível de Combustível no Retorno (Arraste o ponteiro)</label>
+          <div class="gauge-wrapper" id="gaugeRetornoContainer">
+            <svg class="gauge-svg" id="gaugeRetornoSvg" viewBox="0 0 200 120">
+              <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e2e8f0" stroke-width="10" stroke-linecap="round"/>
+              <path d="M 20 100 A 80 80 0 0 1 43.43 43.43" fill="none" stroke="#e30613" stroke-width="10" stroke-linecap="round"/>
+              <path d="M 43.43 43.43 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="6" stroke-linecap="round"/>
+              
+              <line x1="20" y1="100" x2="35" y2="92" stroke="#e30613" stroke-width="4" stroke-linecap="round"/>
+              <line x1="180" y1="100" x2="165" y2="92" stroke="#1e293b" stroke-width="4" stroke-linecap="round"/>
+              
+              <text x="22" y="118" font-size="18" font-weight="900" fill="#e30613">E</text>
+              <text x="168" y="118" font-size="18" font-weight="900" fill="#1e293b">F</text>
+              
+              <circle cx="100" cy="100" r="12" fill="#1e293b"/>
+              
+              <g id="needleGroupRetorno" transform="rotate(90, 100, 100)">
+                <line x1="100" y1="100" x2="25" y2="100" stroke="#e30613" stroke-width="5" stroke-linecap="round"/>
+                <circle cx="100" cy="100" r="6" fill="#e30613"/>
+              </g>
+            </svg>
+            <div class="gauge-label" id="gaugeRetornoLabel">1/2 (50%)</div>
+            <input type="hidden" id="retornoCombustivel" value="1/2 (50%)">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-success btn-modal-submit">
+          <span>📥 Confirmar Retorno do Veículo</span>
+        </button>
       </form>
     </div>
   </div>
