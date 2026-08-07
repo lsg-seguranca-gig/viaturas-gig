@@ -505,7 +505,6 @@
       canvas.height = 70;
       const ctx = canvas.getContext('2d');
 
-      // Extrai porcentagem (Ex: "1/2 (50%)" -> 50)
       let pct = 50;
       const match = textoCombustivel ? textoCombustivel.match(/(\d+)%/) : null;
       if (match) {
@@ -564,6 +563,23 @@
       return canvas.toDataURL('image/png');
     }
 
+    // --- FORMATAÇÃO VISUAL DO COMBUSTÍVEL PARA O EXCEL ---
+    function formatarCombustivelTexto(textoCombustivel) {
+      if (!textoCombustivel) return '-';
+      
+      let pct = 0;
+      const match = textoCombustivel.match(/(\d+)%/);
+      if (match) {
+        pct = parseInt(match[1]);
+      }
+
+      const blocosCheios = Math.round(pct / 10);
+      const blocosVazios = 10 - blocosCheios;
+      const barra = '█'.repeat(blocosCheios) + '░'.repeat(blocosVazios);
+
+      return `${barra} ${pct}%`;
+    }
+
     // --- EXPORTAÇÃO EXCEL ---
     function exportarExcel() {
       if (registrosFiltrados.length === 0) {
@@ -571,24 +587,45 @@
         return;
       }
 
-      const excelData = registrosFiltrados.map(r => ({
-        "ID": r.id,
-        "Status": r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído',
-        "Veículo": r.veiculo,
-        "Motorista": r.nome,
-        "Data Saída": r.data,
-        "Horário Saída": r.horarioSaida,
-        "KM Saída": r.kmSaida,
-        "Combustível Saída": r.combustivelSaida || '',
-        "Controlador Saída": r.controladorSaida,
-        "Horário Retorno": r.horarioChegada || '',
-        "KM Retorno": r.kmChegada || '',
-        "Combustível Retorno": r.combustivelChegada || '',
-        "Controlador Retorno": r.controladorChegada || '',
-        "Observações": r.obsSaida || r.obsChegada || ''
-      }));
+      const excelData = registrosFiltrados.map((r, i) => {
+        const displayId = r.id ? r.id.replace('REC_', '') : (i + 1);
+        return {
+          "ID": displayId,
+          "Status": r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído',
+          "Veículo": r.veiculo || '-',
+          "Motorista": r.nome || '-',
+          "Data Saída": r.data || '-',
+          "Horário Saída": r.horarioSaida || '-',
+          "KM Saída": r.kmSaida || '-',
+          "Marcador Comb. Saída": formatarCombustivelTexto(r.combustivelSaida),
+          "Controlador Saída": r.controladorSaida || '-',
+          "Horário Retorno": r.horarioChegada || '-',
+          "KM Retorno": r.kmChegada || '-',
+          "Marcador Comb. Retorno": formatarCombustivelTexto(r.combustivelChegada),
+          "Controlador Retorno": r.controladorChegada || '-',
+          "Observações": r.obsSaida || r.obsChegada || '-'
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(excelData);
+
+      ws['!cols'] = [
+        { wch: 8 },  // ID
+        { wch: 14 }, // Status
+        { wch: 15 }, // Veiculo
+        { wch: 25 }, // Motorista
+        { wch: 12 }, // Data Saida
+        { wch: 12 }, // Hora Saida
+        { wch: 10 }, // KM Saida
+        { wch: 22 }, // Marcador Comb Saida
+        { wch: 22 }, // Controlador Saida
+        { wch: 12 }, // Hora Retorno
+        { wch: 10 }, // KM Retorno
+        { wch: 22 }, // Marcador Comb Retorno
+        { wch: 22 }, // Controlador Retorno
+        { wch: 30 }  // Obs
+      ];
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Movimentacao_Viaturas");
 
@@ -665,27 +702,24 @@
           valign: 'middle'
         },
         columnStyles: {
-          5: { cellWidth: 20 }, // Coluna do marcador de saída
-          8: { cellWidth: 20 }  // Coluna do marcador de retorno
+          5: { cellWidth: 20 },
+          8: { cellWidth: 20 }
         },
         alternateRowStyles: {
           fillColor: [248, 250, 252]
         },
         margin: { top: 26, left: 10, right: 10, bottom: 12 },
 
-        // Desenha a imagem do Marcador de Combustível em cada linha correspondente
         didDrawCell: function (data) {
           if (data.section === 'body') {
             const rowIndex = data.row.index;
             const item = registrosFiltrados[rowIndex];
 
-            // Coluna 5: Combustível Saída
             if (data.column.index === 5 && item) {
               const gaugeImg = gerarImagemGaugeCanvas(item.combustivelSaida);
               doc.addImage(gaugeImg, 'PNG', data.cell.x + 2, data.cell.y + 1, 16, 9);
             }
 
-            // Coluna 8: Combustível Retorno
             if (data.column.index === 8 && item && item.combustivelChegada) {
               const gaugeImg = gerarImagemGaugeCanvas(item.combustivelChegada);
               doc.addImage(gaugeImg, 'PNG', data.cell.x + 2, data.cell.y + 1, 16, 9);
