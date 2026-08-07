@@ -138,7 +138,6 @@
       border-color: var(--secondary);
     }
 
-    /* MARCADOR DE COMBUSTÍVEL INTERATIVO */
     .gauge-wrapper {
       background: #f8fafc;
       border: 1px dashed var(--border);
@@ -216,7 +215,6 @@
     .status-active { background-color: #fef3c7; color: #92400e; }
     .status-completed { background-color: #d1fae5; color: #065f46; }
 
-    /* Modal */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -528,15 +526,16 @@
   <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGrfIj2JYZZ1PJwi8giGdOzz_-mPFvNqVc4F5zWF_9-O3_m5SADvLMUHscc8VUE_cSNQ/exec";
+    const API_URL = "/api/gas";
 
     let registros = JSON.parse(localStorage.getItem("lsg_frota_registros")) || [];
 
-    // --- CARREGAR CADASTROS DO GOOGLE SHEETS VIA JSONP ---
-    function loadCadastros() {
-      if (!SCRIPT_URL || SCRIPT_URL.includes("SUA_URL")) return;
+    // --- CARREGAR CADASTROS VIA PROXY API ---
+    async function loadCadastros() {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
 
-      window.handleCadastrosResponse = function(data) {
         const selectVeiculo = document.getElementById('saidaVeiculo');
         const selectNome = document.getElementById('saidaNome');
         const selectControladorSaida = document.getElementById('saidaControlador');
@@ -565,11 +564,9 @@
           selectControladorSaida.innerHTML = '<option value="">Nenhum controlador encontrado</option>';
           selectControladorRetorno.innerHTML = '<option value="">Nenhum controlador encontrado</option>';
         }
-      };
-
-      const script = document.createElement('script');
-      script.src = `${SCRIPT_URL}?callback=handleCadastrosResponse`;
-      document.body.appendChild(script);
+      } catch (error) {
+        console.error("Erro ao carregar cadastros:", error);
+      }
     }
 
     // --- LÓGICA DO MARCADOR INTERATIVO ---
@@ -704,14 +701,16 @@
       document.getElementById('modalRetorno').classList.remove('active');
     }
 
-    function sendToGoogleSheets(dataObj) {
-      if (!SCRIPT_URL || SCRIPT_URL.includes("SUA_URL")) return;
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataObj)
-      }).catch(err => console.error("Erro ao enviar:", err));
+    async function sendToGoogleSheets(dataObj) {
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataObj)
+        });
+      } catch (err) {
+        console.error("Erro ao enviar dados para a API:", err);
+      }
     }
 
     document.getElementById('saidaForm').addEventListener('submit', function(e) {
