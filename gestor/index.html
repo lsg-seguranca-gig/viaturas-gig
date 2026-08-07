@@ -4,13 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Gestor - Controle de Viaturas LSG GIG</title>
-  <link rel="icon" href="../icone lsg.ico" type="image/x-icon" />
 
-  <!-- Bibliotecas externas para relatórios, gráficos e ícones -->
+  <!-- Bibliotecas externas para relatórios e gráficos -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     :root {
@@ -61,7 +59,7 @@
 
     .app-container {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1240px;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -168,10 +166,10 @@
       gap: 8px;
     }
 
-    /* Filters Layout */
+    /* Layout dos Filtros */
     .filter-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 14px;
       margin-bottom: 16px;
     }
@@ -192,7 +190,7 @@
       padding: 10px 12px;
       border: 1px solid var(--border-color);
       border-radius: 8px;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       background-color: var(--bg-body);
       color: var(--text-main);
     }
@@ -220,7 +218,7 @@
     .btn-pdf { background-color: var(--accent); color: white; }
     .btn-reset { background-color: var(--text-muted); color: white; }
 
-    /* Table */
+    /* Tabela */
     .table-container { overflow-x: auto; margin-top: 16px; }
 
     table {
@@ -289,7 +287,7 @@
       </div>
     </div>
 
-    <!-- Filtros e Exportações -->
+    <!-- Filtros em Dropdown + Ações -->
     <div class="card">
       <div class="card-title">🔍 Filtros e Relatórios</div>
 
@@ -298,10 +296,12 @@
           <label>Data Inicial</label>
           <input type="date" id="filterDataInicio" onchange="aplicarFiltros()">
         </div>
+
         <div class="filter-group">
           <label>Data Final</label>
           <input type="date" id="filterDataFim" onchange="aplicarFiltros()">
         </div>
+
         <div class="filter-group">
           <label>Status</label>
           <select id="filterStatus" onchange="aplicarFiltros()">
@@ -310,13 +310,26 @@
             <option value="CONCLUIDO">Concluído</option>
           </select>
         </div>
+
         <div class="filter-group">
           <label>Veículo / Placa</label>
-          <input type="text" id="filterVeiculo" placeholder="Ex: VTR 01" oninput="aplicarFiltros()">
+          <select id="filterVeiculo" onchange="aplicarFiltros()">
+            <option value="">Todos os veículos...</option>
+          </select>
         </div>
+
         <div class="filter-group">
           <label>Motorista</label>
-          <input type="text" id="filterMotorista" placeholder="Nome do motorista..." oninput="aplicarFiltros()">
+          <select id="filterMotorista" onchange="aplicarFiltros()">
+            <option value="">Todos os motoristas...</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Controlador</label>
+          <select id="filterControlador" onchange="aplicarFiltros()">
+            <option value="">Todos os controladores...</option>
+          </select>
         </div>
       </div>
 
@@ -327,7 +340,7 @@
       </div>
     </div>
 
-    <!-- Tabela de Dados Filtrados -->
+    <!-- Tabela de Registros -->
     <div class="card">
       <div class="card-title">📋 Registros Filtrados</div>
 
@@ -339,9 +352,9 @@
               <th>Status</th>
               <th>Veículo</th>
               <th>Motorista</th>
-              <th>Saída (Data / Hora)</th>
-              <th>Retorno (Data / Hora)</th>
-              <th>Controlador (Saída / Retorno)</th>
+              <th>Saída (Data / Hora / Combustível)</th>
+              <th>Retorno (Data / Hora / Combustível)</th>
+              <th>Controladores (S / R)</th>
               <th>Obs</th>
             </tr>
           </thead>
@@ -352,26 +365,75 @@
   </div>
 
   <script>
+    const API_URL = "/api/gas";
     let registrosBase = JSON.parse(localStorage.getItem("lsg_frota_registros")) || [];
     let registrosFiltrados = [];
 
-    function renderDashboard() {
-      aplicarFiltros();
+    // --- CARREGAR DROPDOWNS VIA API ---
+    async function loadDropdowns() {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+
+        const selectVeiculo = document.getElementById('filterVeiculo');
+        const selectMotorista = document.getElementById('filterMotorista');
+        const selectControlador = document.getElementById('filterControlador');
+
+        // Preenche veículos
+        if (data.veiculos && data.veiculos.length > 0) {
+          selectVeiculo.innerHTML = '<option value="">Todos os veículos...</option>';
+          data.veiculos.forEach(v => selectVeiculo.innerHTML += `<option value="${v}">${v}</option>`);
+        }
+
+        // Preenche motoristas
+        if (data.motoristas && data.motoristas.length > 0) {
+          selectMotorista.innerHTML = '<option value="">Todos os motoristas...</option>';
+          data.motoristas.forEach(m => selectMotorista.innerHTML += `<option value="${m}">${m}</option>`);
+        }
+
+        // Preenche controladores
+        if (data.controladores && data.controladores.length > 0) {
+          selectControlador.innerHTML = '<option value="">Todos os controladores...</option>';
+          data.controladores.forEach(c => selectControlador.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+      } catch (err) {
+        console.warn("Não foi possível carregar as opções da API via fetch, extraindo dos registros locais.", err);
+        populardropdownsLocais();
+      }
+    }
+
+    function populardropdownsLocais() {
+      const veiculos = [...new Set(registrosBase.map(r => r.veiculo).filter(Boolean))];
+      const motoristas = [...new Set(registrosBase.map(r => r.nome).filter(Boolean))];
+      const controladores = [...new Set([
+        ...registrosBase.map(r => r.controladorSaida),
+        ...registrosBase.map(r => r.controladorChegada)
+      ].filter(Boolean))];
+
+      const selectVeiculo = document.getElementById('filterVeiculo');
+      const selectMotorista = document.getElementById('filterMotorista');
+      const selectControlador = document.getElementById('filterControlador');
+
+      veiculos.forEach(v => selectVeiculo.innerHTML += `<option value="${v}">${v}</option>`);
+      motoristas.forEach(m => selectMotorista.innerHTML += `<option value="${m}">${m}</option>`);
+      controladores.forEach(c => selectControlador.innerHTML += `<option value="${c}">${c}</option>`);
     }
 
     function aplicarFiltros() {
       const dtInicio = document.getElementById('filterDataInicio').value;
       const dtFim = document.getElementById('filterDataFim').value;
       const status = document.getElementById('filterStatus').value;
-      const veiculo = document.getElementById('filterVeiculo').value.toLowerCase();
-      const motorista = document.getElementById('filterMotorista').value.toLowerCase();
+      const veiculo = document.getElementById('filterVeiculo').value;
+      const motorista = document.getElementById('filterMotorista').value;
+      const controlador = document.getElementById('filterControlador').value;
 
       registrosFiltrados = registrosBase.filter(r => {
         if (dtInicio && r.data < dtInicio) return false;
         if (dtFim && r.data > dtFim) return false;
         if (status && r.status !== status) return false;
-        if (veiculo && !(r.veiculo || '').toLowerCase().includes(veiculo)) return false;
-        if (motorista && !(r.nome || '').toLowerCase().includes(motorista)) return false;
+        if (veiculo && r.veiculo !== veiculo) return false;
+        if (motorista && r.nome !== motorista) return false;
+        if (controlador && (r.controladorSaida !== controlador && r.controladorChegada !== controlador)) return false;
         return true;
       });
 
@@ -415,10 +477,10 @@
         tr.innerHTML = `
           <td><strong>${displayId}</strong></td>
           <td><span class="badge ${isEmTransito ? 'badge-transito' : 'badge-concluido'}">${isEmTransito ? 'Em Trânsito' : 'Concluído'}</span></td>
-          <td>${r.veiculo}</td>
-          <td>${r.nome}</td>
-          <td>${r.data} ${r.horarioSaida}</td>
-          <td>${r.horarioChegada ? r.data + ' ' + r.horarioChegada : '-'}</td>
+          <td>${r.veiculo || '-'}</td>
+          <td>${r.nome || '-'}</td>
+          <td>${r.data} ${r.horarioSaida}<br><small style="color:var(--text-muted)">Comb: ${r.combustivelSaida || '-'}</small></td>
+          <td>${r.horarioChegada ? r.data + ' ' + r.horarioChegada : '-'}<br><small style="color:var(--text-muted)">Comb: ${r.combustivelChegada || '-'}</small></td>
           <td><small>S:</small> ${r.controladorSaida || '-'}<br><small>R:</small> ${r.controladorChegada || '-'}</td>
           <td>${r.obsSaida || r.obsChegada || '-'}</td>
         `;
@@ -432,7 +494,74 @@
       document.getElementById('filterStatus').value = '';
       document.getElementById('filterVeiculo').value = '';
       document.getElementById('filterMotorista').value = '';
+      document.getElementById('filterControlador').value = '';
       aplicarFiltros();
+    }
+
+    // --- GERADOR DE IMAGEM PNG DO MARCADOR DE COMBUSTÍVEL PARA O PDF ---
+    function gerarImagemGaugeCanvas(textoCombustivel) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 120;
+      canvas.height = 70;
+      const ctx = canvas.getContext('2d');
+
+      // Extrai porcentagem (Ex: "1/2 (50%)" -> 50)
+      let pct = 50;
+      const match = textoCombustivel ? textoCombustivel.match(/(\d+)%/) : null;
+      if (match) {
+        pct = parseInt(match[1]);
+      }
+
+      const cx = 60;
+      const cy = 55;
+      const radius = 40;
+
+      // Arco Fundo
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, Math.PI, 0, false);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.stroke();
+
+      // Arco Vermelho (Reserva)
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, Math.PI, Math.PI + (Math.PI * 0.25), false);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#e30613';
+      ctx.stroke();
+
+      // Texto E / F
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillStyle = '#e30613';
+      ctx.fillText('E', 12, 60);
+      ctx.fillStyle = '#002b49';
+      ctx.fillText('F', 102, 60);
+
+      // Ponteiro Rotacionado
+      const angle = Math.PI + (pct / 100) * Math.PI;
+      const px = cx + (radius - 8) * Math.cos(angle);
+      const py = cy + (radius - 8) * Math.sin(angle);
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(px, py);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#e30613';
+      ctx.stroke();
+
+      // Centro do ponteiro
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#002b49';
+      ctx.fill();
+
+      // Rótulo da porcentagem abaixo
+      ctx.font = 'bold 8px sans-serif';
+      ctx.fillStyle = '#1f2937';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${pct}%`, cx, cy + 12);
+
+      return canvas.toDataURL('image/png');
     }
 
     // --- EXPORTAÇÃO EXCEL ---
@@ -450,9 +579,11 @@
         "Data Saída": r.data,
         "Horário Saída": r.horarioSaida,
         "KM Saída": r.kmSaida,
+        "Combustível Saída": r.combustivelSaida || '',
         "Controlador Saída": r.controladorSaida,
         "Horário Retorno": r.horarioChegada || '',
         "KM Retorno": r.kmChegada || '',
+        "Combustível Retorno": r.combustivelChegada || '',
         "Controlador Retorno": r.controladorChegada || '',
         "Observações": r.obsSaida || r.obsChegada || ''
       }));
@@ -465,7 +596,7 @@
       XLSX.writeFile(wb, `relatorio_veiculos_${dataHoje}.xlsx`);
     }
 
-    // --- EXPORTAÇÃO PDF OFICIAL NO MODELO LSG SKY CHEFS ---
+    // --- EXPORTAÇÃO PDF COM LOGO E MARCADORES DE COMBUSTÍVEL ---
     function exportarPDF() {
       if (registrosFiltrados.length === 0) {
         alert('Não há dados para gerar o relatório PDF.');
@@ -478,30 +609,26 @@
       const img = document.getElementById('logoImg');
       if (img && img.complete) {
         try {
-          doc.addImage(img, 'PNG', 14, 10, 30, 15);
+          doc.addImage(img, 'PNG', 14, 8, 28, 14);
         } catch (e) {
-          console.warn("Logo não carregado no PDF", e);
+          console.warn("Logo não inserido no PDF", e);
         }
       }
 
-      // Título e subcabeçalho
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 43, 73);
-      doc.text("LSG Sky Chefs - Relatório de Movimentação de Veículos (Base GIG)", 50, 18);
+      doc.text("LSG Sky Chefs - Relatório de Movimentação de Veículos (Base GIG)", 46, 15);
 
       const agora = new Date();
-      const dataGeracao = agora.toLocaleString('pt-BR');
-      
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100);
-      doc.text(`Gerado em: ${dataGeracao} | Total de registros: ${registrosFiltrados.length}`, 50, 24);
+      doc.text(`Gerado em: ${agora.toLocaleString('pt-BR')} | Total de registros: ${registrosFiltrados.length}`, 46, 20);
 
-      // Mapeamento idêntico de colunas do modelo fornecido
       const tableColumns = [
-        "Status", "ID", "Veículo", "Motorista", "Auxiliares", "Saída", 
-        "Controlador de Acesso Saída", "Retorno", "Controlador de Saída Retorno", "Obs"
+        "Status", "ID", "Veículo", "Motorista", "Saída", 
+        "Comb. Saída", "Controlador Saída", "Retorno", "Comb. Retorno", "Controlador Retorno", "Obs"
       ];
 
       const tableRows = registrosFiltrados.map((r, i) => {
@@ -511,41 +638,65 @@
           displayId,
           r.veiculo || '-',
           r.nome || '-',
-          '-',
           `${r.data}\n${r.horarioSaida}`,
+          '', // Reservado para imagem do medidor de saída
           r.controladorSaida || '-',
           r.horarioChegada ? `${r.data}\n${r.horarioChegada}` : '-',
+          '', // Reservado para imagem do medidor de retorno
           r.controladorChegada || '-',
           r.obsSaida || r.obsChegada || '-'
         ];
       });
 
       doc.autoTable({
-        startY: 30,
+        startY: 26,
         head: [tableColumns],
         body: tableRows,
         theme: 'striped',
         headStyles: {
           fillColor: [0, 43, 73],
           textColor: [255, 255, 255],
-          fontSize: 8,
+          fontSize: 7.5,
           fontStyle: 'bold',
           halign: 'center'
         },
         bodyStyles: {
-          fontSize: 7.5,
+          fontSize: 7,
           valign: 'middle'
+        },
+        columnStyles: {
+          5: { cellWidth: 20 }, // Coluna do marcador de saída
+          8: { cellWidth: 20 }  // Coluna do marcador de retorno
         },
         alternateRowStyles: {
           fillColor: [248, 250, 252]
         },
-        margin: { top: 30, left: 14, right: 14, bottom: 15 },
+        margin: { top: 26, left: 10, right: 10, bottom: 12 },
+
+        // Desenha a imagem do Marcador de Combustível em cada linha correspondente
+        didDrawCell: function (data) {
+          if (data.section === 'body') {
+            const rowIndex = data.row.index;
+            const item = registrosFiltrados[rowIndex];
+
+            // Coluna 5: Combustível Saída
+            if (data.column.index === 5 && item) {
+              const gaugeImg = gerarImagemGaugeCanvas(item.combustivelSaida);
+              doc.addImage(gaugeImg, 'PNG', data.cell.x + 2, data.cell.y + 1, 16, 9);
+            }
+
+            // Coluna 8: Combustível Retorno
+            if (data.column.index === 8 && item && item.combustivelChegada) {
+              const gaugeImg = gerarImagemGaugeCanvas(item.combustivelChegada);
+              doc.addImage(gaugeImg, 'PNG', data.cell.x + 2, data.cell.y + 1, 16, 9);
+            }
+          }
+        },
         didDrawPage: function (data) {
-          // Rodapé do PDF
           const str = `Página ${doc.internal.getNumberOfPages()}`;
           doc.setFontSize(8);
           doc.setTextColor(150);
-          doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+          doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 6);
         }
       });
 
@@ -553,7 +704,8 @@
       doc.save(`relatorio_veiculos_${dataHoje}.pdf`);
     }
 
-    renderDashboard();
+    loadDropdowns();
+    aplicarFiltros();
   </script>
 </body>
 </html>
