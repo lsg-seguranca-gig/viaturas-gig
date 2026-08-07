@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Saída e Retorno de Viaturas Pequenas - Base GIG</title>
-  <link rel="icon" href="icone lsg.ico" type="image/x-icon" />
   <style>
     :root {
       --bg-body: #f4f6f9;
@@ -289,6 +288,7 @@
     .status-active { background-color: rgba(245, 158, 11, 0.15); color: #d97706; }
     .status-completed { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
 
+    /* --- CONFIGURAÇÕES REVISADAS DA JANELA MODAL --- */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -304,13 +304,19 @@
       transition: all 0.25s ease;
     }
 
-    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-overlay.active { 
+      opacity: 1; 
+      visibility: visible; 
+    }
 
     .modal {
       background-color: var(--card-bg);
       border-radius: 16px;
       width: 100%;
       max-width: 500px;
+      max-height: 90vh; /* Mantém todo o modal visível na viewport */
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
       overflow: hidden;
       border: 1px solid var(--border-color);
@@ -319,11 +325,12 @@
     .modal-header {
       background-color: var(--primary);
       color: white;
-      padding: 18px 24px;
+      padding: 14px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 3px solid var(--accent);
+      flex-shrink: 0;
     }
 
     .modal-close {
@@ -335,19 +342,44 @@
     }
 
     .modal-body {
-      padding: 24px;
+      padding: 16px 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
+      overflow-y: auto; /* Permite rolagem suave caso a tela seja pequena */
+    }
+
+    .modal-body .form-group {
+      gap: 4px;
+    }
+
+    .modal-body input, 
+    .modal-body select, 
+    .modal-body textarea {
+      padding: 8px 12px;
+      font-size: 0.9rem;
+    }
+
+    .modal-body textarea {
+      min-height: 50px;
+    }
+
+    #gaugeRetornoSvg {
+      width: 170px;
+      height: 100px;
+    }
+
+    #gaugeRetornoContainer {
+      padding: 10px;
     }
 
     .info-summary {
       background-color: var(--bg-body);
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-radius: 8px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 6px;
       font-size: 0.85rem;
       border: 1px solid var(--border-color);
     }
@@ -355,7 +387,7 @@
     .info-summary div strong {
       color: var(--text-muted);
       display: block;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
     }
 
@@ -516,7 +548,7 @@
     </div>
   </div>
 
-  <!-- Modal Retorno -->
+  <!-- Modal Retorno Ajustado -->
   <div class="modal-overlay" id="modalRetorno">
     <div class="modal">
       <div class="modal-header">
@@ -537,11 +569,11 @@
               <span id="modalNomeTarget">-</span>
             </div>
             <div>
-              <strong>Horário de Saída</strong>
+              <strong>Horário Saída</strong>
               <span id="modalHoraSaidaTarget">-</span>
             </div>
             <div>
-              <strong>KM de Saída</strong>
+              <strong>KM Saída</strong>
               <span id="modalKmSaidaTarget">-</span>
             </div>
           </div>
@@ -595,7 +627,7 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">
+          <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 6px;">
             <span>📥 Confirmar Retorno do Veículo</span>
           </button>
         </div>
