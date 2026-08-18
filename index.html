@@ -662,276 +662,275 @@
   <div class="toast" id="toast"><span id="toastMsg"></span></div>
 
   <script>
-    const API_URL = "/api/gas";
+  const API_URL = "/api/gas";
+  let registros = JSON.parse(localStorage.getItem("lsg_frota_registros")) || [];
 
-    let registros = JSON.parse(localStorage.getItem("lsg_frota_registros")) || [];
+  // --- GERENCIAMENTO DE TEMA ---
+  function initTheme() {
+    const savedTheme = localStorage.getItem("lsg_theme") || "light";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    updateThemeUI(savedTheme);
+  }
 
-    // --- GERENCIAMENTO DE TEMA (MODO CLARO / ESCURO) ---
-    function initTheme() {
-      const savedTheme = localStorage.getItem("lsg_theme") || "light";
-      document.documentElement.setAttribute("data-theme", savedTheme);
-      updateThemeUI(savedTheme);
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute("data-theme");
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("lsg_theme", newTheme);
+    updateThemeUI(newTheme);
+  }
+
+  function updateThemeUI(theme) {
+    const icon = document.getElementById("themeIcon");
+    const text = document.getElementById("themeText");
+    if (theme === "dark") {
+      icon.innerText = "☀️";
+      text.innerText = "Claro";
+    } else {
+      icon.innerText = "🌙";
+      text.innerText = "Escuro";
     }
+  }
 
-    function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute("data-theme");
-      const newTheme = currentTheme === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", newTheme);
-      localStorage.setItem("lsg_theme", newTheme);
-      updateThemeUI(newTheme);
-    }
+  // --- CARREGAR CADASTROS E HISTÓRICO REALTIME ---
+  async function loadCadastrosAndHistory() {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
 
-    function updateThemeUI(theme) {
-      const icon = document.getElementById("themeIcon");
-      const text = document.getElementById("themeText");
-      if (theme === "dark") {
-        icon.innerText = "☀️";
-        text.innerText = "Claro";
-      } else {
-        icon.innerText = "🌙";
-        text.innerText = "Escuro";
-      }
-    }
+      const selectVeiculo = document.getElementById('saidaVeiculo');
+      const selectNome = document.getElementById('saidaNome');
+      const selectControladorSaida = document.getElementById('saidaControlador');
+      const selectControladorRetorno = document.getElementById('retornoControlador');
 
-    // --- CARREGAR CADASTROS ---
-    async function loadCadastros() {
-      try {
-        const response = await fetch(API_URL);
-        const data = await response.json();
-
-        const selectVeiculo = document.getElementById('saidaVeiculo');
-        const selectNome = document.getElementById('saidaNome');
-        const selectControladorSaida = document.getElementById('saidaControlador');
-        const selectControladorRetorno = document.getElementById('retornoControlador');
-
-        if (data.veiculos && data.veiculos.length > 0) {
-          selectVeiculo.innerHTML = '<option value="">Selecione o veículo...</option>';
-          data.veiculos.forEach(v => selectVeiculo.innerHTML += `<option value="${v}">${v}</option>`);
-        } else {
-          selectVeiculo.innerHTML = '<option value="">Nenhum veículo encontrado</option>';
-        }
-
-        if (data.motoristas && data.motoristas.length > 0) {
-          selectNome.innerHTML = '<option value="">Selecione o motorista...</option>';
-          data.motoristas.forEach(m => selectNome.innerHTML += `<option value="${m}">${m}</option>`);
-        } else {
-          selectNome.innerHTML = '<option value="">Nenhum motorista encontrado</option>';
-        }
-
-        if (data.controladores && data.controladores.length > 0) {
-          let options = '<option value="">Selecione o controlador...</option>';
-          data.controladores.forEach(c => options += `<option value="${c}">${c}</option>`);
-          selectControladorSaida.innerHTML = options;
-          selectControladorRetorno.innerHTML = options;
-        } else {
-          selectControladorSaida.innerHTML = '<option value="">Nenhum controlador encontrado</option>';
-          selectControladorRetorno.innerHTML = '<option value="">Nenhum controlador encontrado</option>';
-        }
-      } catch (error) {
-        console.error("Erro ao carregar cadastros:", error);
-      }
-    }
-
-    // --- MEDIDOR DE COMBUSTÍVEL INTERATIVO ---
-    function setupGauge(svgId, needleId, labelId, hiddenInputId) {
-      const svg = document.getElementById(svgId);
-      const needleGroup = document.getElementById(needleId);
-      const label = document.getElementById(labelId);
-      const input = document.getElementById(hiddenInputId);
-
-      let isDragging = false;
-
-      function updateGauge(event) {
-        const rect = svg.getBoundingClientRect();
-        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + (rect.height * 100 / 120);
-
-        const dx = clientX - cx;
-        const dy = clientY - cy;
-
-        let angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
-        if (angleDeg > 0) angleDeg = dx < 0 ? -180 : 0;
-
-        let pct = Math.round(((angleDeg + 180) / 180) * 100);
-        pct = Math.max(0, Math.min(100, pct));
-
-        const rotationAngle = (pct / 100) * 180;
-        needleGroup.setAttribute('transform', `rotate(${rotationAngle}, 100, 100)`);
-
-        let textVal = `${pct}%`;
-        if (pct === 0) textVal = "Vazio / Reserva (0%)";
-        else if (pct <= 25) textVal = `Reserva (${pct}%)`;
-        else if (pct === 50) textVal = "1/2 (50%)";
-        else if (pct === 75) textVal = "3/4 (75%)";
-        else if (pct === 100) textVal = "Cheio (100%)";
-
-        label.innerText = textVal;
-        input.value = textVal;
+      if (data.veiculos && data.veiculos.length > 0) {
+        selectVeiculo.innerHTML = '<option value="">Selecione o veículo...</option>';
+        data.veiculos.forEach(v => selectVeiculo.innerHTML += `<option value="${v}">${v}</option>`);
       }
 
-      svg.addEventListener('mousedown', (e) => { isDragging = true; updateGauge(e); });
-      window.addEventListener('mousemove', (e) => { if (isDragging) updateGauge(e); });
-      window.addEventListener('mouseup', () => { isDragging = false; });
-
-      svg.addEventListener('touchstart', (e) => { isDragging = true; updateGauge(e); });
-      window.addEventListener('touchmove', (e) => { if (isDragging) updateGauge(e); });
-      window.addEventListener('touchend', () => { isDragging = false; });
-    }
-
-    setupGauge('gaugeSaidaSvg', 'needleGroupSaida', 'gaugeSaidaLabel', 'saidaCombustivel');
-    setupGauge('gaugeRetornoSvg', 'needleGroupRetorno', 'gaugeRetornoLabel', 'retornoCombustivel');
-
-    function initDefaultDateTime() {
-      const now = new Date();
-      document.getElementById('saidaData').valueAsDate = now;
-      const horaStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-      document.getElementById('saidaHorario').value = horaStr;
-    }
-
-    function showToast(msg) {
-      const toast = document.getElementById('toast');
-      document.getElementById('toastMsg').innerText = msg;
-      toast.classList.add('active');
-      setTimeout(() => toast.classList.remove('active'), 3000);
-    }
-
-    function saveAndRender() {
-      localStorage.setItem("lsg_frota_registros", JSON.stringify(registros));
-      renderHistory();
-    }
-
-    function renderHistory() {
-      const tbody = document.getElementById('historicoBody');
-      const counter = document.getElementById('vehicleCounter');
-      tbody.innerHTML = '';
-
-      const pendentes = registros.filter(r => r.status === 'EM_TRANSITO');
-      counter.innerText = `${pendentes.length} em trânsito`;
-
-      if (registros.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum veículo registrado até o momento.</td></tr>`;
-        return;
+      if (data.motoristas && data.motoristas.length > 0) {
+        selectNome.innerHTML = '<option value="">Selecione o motorista...</option>';
+        data.motoristas.forEach(m => selectNome.innerHTML += `<option value="${m}">${m}</option>`);
       }
 
-      [...registros].reverse().forEach(item => {
-        const tr = document.createElement('tr');
-        const isEmTransito = item.status === 'EM_TRANSITO';
-
-        tr.innerHTML = `
-          <td><strong>${item.data}</strong><br><small style="color:var(--text-muted)">Saída: ${item.horarioSaida}</small></td>
-          <td><strong>${item.veiculo}</strong><br><small style="color:var(--text-muted)">Motorista: ${item.nome}</small></td>
-          <td>
-            <small style="color:var(--text-muted)">Saída:</small> ${item.controladorSaida || '-'}<br>
-            <small style="color:var(--text-muted)">Chegada:</small> ${item.controladorChegada || '-'}
-          </td>
-          <td>${item.kmSaida} km<br><small style="color:var(--text-muted)">Comb: ${item.combustivelSaida}</small></td>
-          <td>
-            <small style="color:var(--text-muted)">Saída:</small> ${item.obsSaida || 'N/A'}<br>
-            <small style="color:var(--text-muted)">Chegada:</small> ${item.obsChegada || 'N/A'}
-          </td>
-          <td>
-            ${isEmTransito 
-              ? `<span class="badge-status status-active">Em Trânsito</span>` 
-              : `<span class="badge-status status-completed">Concluído</span><br><small style="color:var(--text-muted)">Ret: ${item.horarioChegada} (${item.kmChegada} km)</small>`}
-          </td>
-          <td>
-            ${isEmTransito 
-              ? `<button class="btn btn-success" style="padding: 6px 12px; font-size: 0.8rem;" onclick="openModal('${item.id}')">🏁 Retorno</button>` 
-              : `<span style="color: var(--success); font-weight: bold;">✓ Finalizado</span>`}
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function openModal(recordId) {
-      const record = registros.find(r => r.id === recordId);
-      if (!record) return;
-
-      document.getElementById('retornoRecordId').value = record.id;
-      document.getElementById('modalVeiculoTarget').innerText = record.veiculo;
-      document.getElementById('modalNomeTarget').innerText = record.nome;
-      document.getElementById('modalHoraSaidaTarget').innerText = record.horarioSaida;
-      document.getElementById('modalKmSaidaTarget').innerText = record.kmSaida + ' km';
-
-      const now = new Date();
-      document.getElementById('retornoHorario').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-      document.getElementById('retornoKm').value = '';
-      document.getElementById('retornoObs').value = '';
-
-      document.getElementById('modalRetorno').classList.add('active');
-    }
-
-    function closeModal() {
-      document.getElementById('modalRetorno').classList.remove('active');
-    }
-
-    async function sendToGoogleSheets(dataObj) {
-      try {
-        await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataObj)
-        });
-      } catch (err) {
-        console.error("Erro ao enviar dados para a API:", err);
+      if (data.controladores && data.controladores.length > 0) {
+        let options = '<option value="">Selecione o controlador...</option>';
+        data.controladores.forEach(c => options += `<option value="${c}">${c}</option>`);
+        selectControladorSaida.innerHTML = options;
+        selectControladorRetorno.innerHTML = options;
       }
-    }
 
-    document.getElementById('saidaForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-
-      const newRecord = {
-        id: 'REC_' + Date.now(),
-        data: document.getElementById('saidaData').value,
-        veiculo: document.getElementById('saidaVeiculo').value,
-        nome: document.getElementById('saidaNome').value,
-        controladorSaida: document.getElementById('saidaControlador').value,
-        horarioSaida: document.getElementById('saidaHorario').value,
-        kmSaida: document.getElementById('saidaKm').value,
-        combustivelSaida: document.getElementById('saidaCombustivel').value,
-        obsSaida: document.getElementById('saidaObs').value,
-        status: 'EM_TRANSITO'
-      };
-
-      registros.push(newRecord);
-      saveAndRender();
-      sendToGoogleSheets(newRecord);
-
-      document.getElementById('saidaKm').value = '';
-      document.getElementById('saidaObs').value = '';
-      initDefaultDateTime();
-      showToast(`Saída do ${newRecord.veiculo} registrada!`);
-    });
-
-    document.getElementById('retornoForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-
-      const id = document.getElementById('retornoRecordId').value;
-      const record = registros.find(r => r.id === id);
-
-      if (record) {
-        record.status = 'CONCLUIDO';
-        record.controladorChegada = document.getElementById('retornoControlador').value;
-        record.horarioChegada = document.getElementById('retornoHorario').value;
-        record.kmChegada = document.getElementById('retornoKm').value;
-        record.combustivelChegada = document.getElementById('retornoCombustivel').value;
-        record.obsChegada = document.getElementById('retornoObs').value;
-
+      // Sincroniza o histórico com os registros vindos do Google Sheets
+      if (data.registros && Array.isArray(data.registros)) {
+        registros = data.registros;
         saveAndRender();
-        sendToGoogleSheets(record);
-        closeModal();
-        showToast(`Retorno do ${record.veiculo} finalizado!`);
       }
-    });
+    } catch (error) {
+      console.error("Erro ao carregar dados da API:", error);
+    }
+  }
 
-    initTheme();
-    initDefaultDateTime();
+  // --- MEDIDOR DE COMBUSTÍVEL ---
+  function setupGauge(svgId, needleId, labelId, hiddenInputId) {
+    const svg = document.getElementById(svgId);
+    const needleGroup = document.getElementById(needleId);
+    const label = document.getElementById(labelId);
+    const input = document.getElementById(hiddenInputId);
+
+    let isDragging = false;
+
+    function updateGauge(event) {
+      const rect = svg.getBoundingClientRect();
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + (rect.height * 100 / 120);
+
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+
+      let angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+      if (angleDeg > 0) angleDeg = dx < 0 ? -180 : 0;
+
+      let pct = Math.round(((angleDeg + 180) / 180) * 100);
+      pct = Math.max(0, Math.min(100, pct));
+
+      const rotationAngle = (pct / 100) * 180;
+      needleGroup.setAttribute('transform', `rotate(${rotationAngle}, 100, 100)`);
+
+      let textVal = `${pct}%`;
+      if (pct === 0) textVal = "Vazio / Reserva (0%)";
+      else if (pct <= 25) textVal = `Reserva (${pct}%)`;
+      else if (pct === 50) textVal = "1/2 (50%)";
+      else if (pct === 75) textVal = "3/4 (75%)";
+      else if (pct === 100) textVal = "Cheio (100%)";
+
+      label.innerText = textVal;
+      input.value = textVal;
+    }
+
+    svg.addEventListener('mousedown', (e) => { isDragging = true; updateGauge(e); });
+    window.addEventListener('mousemove', (e) => { if (isDragging) updateGauge(e); });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    svg.addEventListener('touchstart', (e) => { isDragging = true; updateGauge(e); });
+    window.addEventListener('touchmove', (e) => { if (isDragging) updateGauge(e); });
+    window.addEventListener('touchend', () => { isDragging = false; });
+  }
+
+  setupGauge('gaugeSaidaSvg', 'needleGroupSaida', 'gaugeSaidaLabel', 'saidaCombustivel');
+  setupGauge('gaugeRetornoSvg', 'needleGroupRetorno', 'gaugeRetornoLabel', 'retornoCombustivel');
+
+  function initDefaultDateTime() {
+    const now = new Date();
+    document.getElementById('saidaData').valueAsDate = now;
+    const horaStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('saidaHorario').value = horaStr;
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastMsg').innerText = msg;
+    toast.classList.add('active');
+    setTimeout(() => toast.classList.remove('active'), 3000);
+  }
+
+  function saveAndRender() {
+    localStorage.setItem("lsg_frota_registros", JSON.stringify(registros));
     renderHistory();
-    loadCadastros();
-  </script>
+  }
+
+  function renderHistory() {
+    const tbody = document.getElementById('historicoBody');
+    const counter = document.getElementById('vehicleCounter');
+    tbody.innerHTML = '';
+
+    const pendentes = registros.filter(r => r.status === 'EM_TRANSITO');
+    counter.innerText = `${pendentes.length} em trânsito`;
+
+    if (registros.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum veículo registrado até o momento.</td></tr>`;
+      return;
+    }
+
+    [...registros].reverse().forEach(item => {
+      const tr = document.createElement('tr');
+      const isEmTransito = item.status === 'EM_TRANSITO';
+
+      tr.innerHTML = `
+        <td><strong>${item.data}</strong><br><small style="color:var(--text-muted)">Saída: ${item.horarioSaida}</small></td>
+        <td><strong>${item.veiculo}</strong><br><small style="color:var(--text-muted)">Motorista: ${item.nome}</small></td>
+        <td>
+          <small style="color:var(--text-muted)">Saída:</small> ${item.controladorSaida || '-'}<br>
+          <small style="color:var(--text-muted)">Chegada:</small> ${item.controladorChegada || '-'}
+        </td>
+        <td>${item.kmSaida} km<br><small style="color:var(--text-muted)">Comb: ${item.combustivelSaida}</small></td>
+        <td>
+          <small style="color:var(--text-muted)">Saída:</small> ${item.obsSaida || 'N/A'}<br>
+          <small style="color:var(--text-muted)">Chegada:</small> ${item.obsChegada || 'N/A'}
+        </td>
+        <td>
+          ${isEmTransito 
+            ? `<span class="badge-status status-active">Em Trânsito</span>` 
+            : `<span class="badge-status status-completed">Concluído</span><br><small style="color:var(--text-muted)">Ret: ${item.horarioChegada} (${item.kmChegada} km)</small>`}
+        </td>
+        <td>
+          ${isEmTransito 
+            ? `<button class="btn btn-success" style="padding: 6px 12px; font-size: 0.8rem;" onclick="openModal('${item.id}')">🏁 Retorno</button>` 
+            : `<span style="color: var(--success); font-weight: bold;">✓ Finalizado</span>`}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function openModal(recordId) {
+    const record = registros.find(r => r.id === recordId);
+    if (!record) return;
+
+    document.getElementById('retornoRecordId').value = record.id;
+    document.getElementById('modalVeiculoTarget').innerText = record.veiculo;
+    document.getElementById('modalNomeTarget').innerText = record.nome;
+    document.getElementById('modalHoraSaidaTarget').innerText = record.horarioSaida;
+    document.getElementById('modalKmSaidaTarget').innerText = record.kmSaida + ' km';
+
+    const now = new Date();
+    document.getElementById('retornoHorario').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('retornoKm').value = '';
+    document.getElementById('retornoObs').value = '';
+
+    document.getElementById('modalRetorno').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('modalRetorno').classList.remove('active');
+  }
+
+  async function sendToGoogleSheets(dataObj) {
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataObj)
+      });
+      // Recarrega os dados para garantir sincronia com a planilha
+      loadCadastrosAndHistory();
+    } catch (err) {
+      console.error("Erro ao enviar dados para a API:", err);
+    }
+  }
+
+  document.getElementById('saidaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const newRecord = {
+      id: 'REC_' + Date.now(),
+      data: document.getElementById('saidaData').value,
+      veiculo: document.getElementById('saidaVeiculo').value,
+      nome: document.getElementById('saidaNome').value,
+      controladorSaida: document.getElementById('saidaControlador').value,
+      horarioSaida: document.getElementById('saidaHorario').value,
+      kmSaida: document.getElementById('saidaKm').value,
+      combustivelSaida: document.getElementById('saidaCombustivel').value,
+      obsSaida: document.getElementById('saidaObs').value,
+      status: 'EM_TRANSITO'
+    };
+
+    registros.push(newRecord);
+    saveAndRender();
+    sendToGoogleSheets(newRecord);
+
+    document.getElementById('saidaKm').value = '';
+    document.getElementById('saidaObs').value = '';
+    initDefaultDateTime();
+    showToast(`Saída do ${newRecord.veiculo} registrada!`);
+  });
+
+  document.getElementById('retornoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const id = document.getElementById('retornoRecordId').value;
+    const record = registros.find(r => r.id === id);
+
+    if (record) {
+      record.status = 'CONCLUIDO';
+      record.controladorChegada = document.getElementById('retornoControlador').value;
+      record.horarioChegada = document.getElementById('retornoHorario').value;
+      record.kmChegada = document.getElementById('retornoKm').value;
+      record.combustivelChegada = document.getElementById('retornoCombustivel').value;
+      record.obsChegada = document.getElementById('retornoObs').value;
+
+      saveAndRender();
+      sendToGoogleSheets(record);
+      closeModal();
+      showToast(`Retorno do ${record.veiculo} finalizado!`);
+    }
+  });
+
+  initTheme();
+  initDefaultDateTime();
+  loadCadastrosAndHistory();
+</script>
 </body>
 </html>
