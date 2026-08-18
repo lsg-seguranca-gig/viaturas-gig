@@ -251,6 +251,30 @@
 
     .badge-transito { background-color: rgba(245, 158, 11, 0.15); color: var(--warning); }
     .badge-concluido { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
+
+    /* Marcador de Combustível Visual */
+    .fuel-gauge-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .fuel-gauge-bar {
+      width: 45px;
+      height: 10px;
+      background-color: #e5e7eb;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .fuel-gauge-fill {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .fuel-gauge-fill.low { background-color: #ef4444; }
+    .fuel-gauge-fill.normal { background-color: #10b981; }
   </style>
 </head>
 <body>
@@ -345,12 +369,13 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th>
               <th>Status</th>
               <th>Veículo</th>
               <th>Motorista</th>
-              <th>Saída (Data / Hora / Combustível)</th>
-              <th>Retorno (Hora / Combustível)</th>
+              <th>Saída (Data / Hora)</th>
+              <th>Retorno (Data / Hora)</th>
+              <th>Comb. Saída</th>
+              <th>Comb. Retorno</th>
               <th>KM Rodados</th>
               <th>Controladores (S / R)</th>
               <th>Obs / Destino</th>
@@ -367,6 +392,54 @@
     const API_URL = "/api/gas";
     let todosRegistros = [];
     let registrosFiltrados = [];
+
+    // Função auxiliar para extrair o valor numérico de porcentagem do marcador de combustível
+    function parseCombustivelValor(val) {
+      if (!val) return 0;
+      const num = parseFloat(String(val).replace('%', '').trim());
+      return isNaN(num) ? 0 : num;
+    }
+
+    // Renderiza a barra visual + texto da porcentagem para a tabela HTML
+    function renderizarMarcadorCombustivelHTML(valorCombustivel) {
+      if (!valorCombustivel || valorCombustivel === '-') return '-';
+      const pct = parseCombustivelValor(valorCombustivel);
+      const isLow = pct <= 20;
+      const fillClass = isLow ? 'low' : 'normal';
+
+      return `
+        <div class="fuel-gauge-container" title="Nível: ${pct}%">
+          <div class="fuel-gauge-bar">
+            <div class="fuel-gauge-fill ${fillClass}" style="width: ${pct}%;"></div>
+          </div>
+          <span><strong>${pct}%</strong></span>
+        </div>
+      `;
+    }
+
+    // Gera a imagem Base64 do gráfico do marcador para ser inserida no PDF
+    function gerarImagemMarcadorBase64(valorCombustivel) {
+      const pct = parseCombustivelValor(valorCombustivel);
+      const canvas = document.createElement('canvas');
+      canvas.width = 60;
+      canvas.height = 14;
+      const ctx = canvas.getContext('2d');
+
+      // Fundo do indicador
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Preenchimento do combustível
+      ctx.fillStyle = pct <= 20 ? '#ef4444' : '#10b981';
+      ctx.fillRect(0, 0, (canvas.width * pct) / 100, canvas.height);
+
+      // Borda
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+      return canvas.toDataURL('image/png');
+    }
 
     async function loadData() {
       try {
@@ -433,7 +506,7 @@
       tbody.innerHTML = '';
 
       if (registrosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
         return;
       }
 
@@ -449,8 +522,12 @@
           }
         }
 
+        const saidaDataHora = `📅 ${item.data || '-'}<br>⏰ ${item.horarioSaida || '-'}`;
+        const retornoDataHora = isEmTransito 
+          ? '<em>Em andamento</em>' 
+          : `📅 ${item.dataChegada || item.data || '-'}<br>⏰ ${item.horarioChegada || '-'}`;
+
         tr.innerHTML = `
-          <td><small><strong>${item.id || '-'}</strong></small></td>
           <td>
             ${isEmTransito 
               ? `<span class="badge badge-transito">Em Trânsito</span>` 
@@ -458,14 +535,10 @@
           </td>
           <td><strong>${item.veiculo}</strong></td>
           <td>${item.nome}</td>
-          <td>
-            📅 ${item.data}<br>
-            ⏰ ${item.horarioSaida}<br>
-            ⛽ ${item.combustivelSaida} | 📏 ${item.kmSaida} km
-          </td>
-          <td>
-            ${isEmTransito ? '<em>Em andamento</em>' : `⏰ ${item.horarioChegada}<br>⛽ ${item.combustivelChegada} | 📏 ${item.kmChegada} km`}
-          </td>
+          <td>${saidaDataHora}</td>
+          <td>${retornoDataHora}</td>
+          <td>${renderizarMarcadorCombustivelHTML(item.combustivelSaida)}</td>
+          <td>${isEmTransito ? '-' : renderizarMarcadorCombustivelHTML(item.combustivelChegada)}</td>
           <td><strong>${kmRodadosText}</strong></td>
           <td>
             <small><strong>S:</strong> ${item.controladorSaida || '-'}</small><br>
@@ -518,19 +591,19 @@
         }
 
         return {
-          "ID": r.id,
-          "Data": r.data,
+          "Data Saída": r.data,
+          "Hora Saída": r.horarioSaida,
+          "Data Retorno": r.dataChegada || r.data,
+          "Hora Retorno": r.horarioChegada || '-',
           "Veículo": r.veiculo,
           "Motorista": r.nome,
           "Controlador Saída": r.controladorSaida,
-          "Hora Saída": r.horarioSaida,
           "KM Saída": r.kmSaida,
-          "Comb. Saída": r.combustivelSaida,
+          "Comb. Saída (%)": parseCombustivelValor(r.combustivelSaida) + '%',
           "Obs Saída": r.obsSaida,
           "Controlador Chegada": r.controladorChegada,
-          "Hora Chegada": r.horarioChegada,
           "KM Chegada": r.kmChegada,
-          "Comb. Chegada": r.combustivelChegada,
+          "Comb. Retorno (%)": r.status === 'CONCLUIDO' ? parseCombustivelValor(r.combustivelChegada) + '%' : '-',
           "KM Rodados": kmRodados,
           "Obs Chegada": r.obsChegada,
           "Status": r.status
@@ -582,47 +655,68 @@
           }
         }
 
-        return [
-          r.id || '-',
-          r.data || '-',
-          r.veiculo || '-',
-          r.nome || '-',
-          r.controladorSaida || '-',
-          r.horarioSaida || '-',
-          r.kmSaida ? `${r.kmSaida} km` : '-',
-          r.combustivelSaida || '-',
-          r.controladorChegada || '-',
-          r.status === 'CONCLUIDO' ? (r.horarioChegada || '-') : '-',
-          r.status === 'CONCLUIDO' ? (r.kmChegada ? `${r.kmChegada} km` : '-') : '-',
-          r.status === 'CONCLUIDO' ? (r.combustivelChegada || '-') : '-',
-          kmRodadosStr,
-          r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído'
-        ];
+        const dataHoraSaidaStr = `${r.data || '-'}\n${r.horarioSaida || '-'}`;
+        const dataHoraRetornoStr = r.status === 'CONCLUIDO' 
+          ? `${r.dataChegada || r.data || '-'}\n${r.horarioChegada || '-'}` 
+          : 'Em Trânsito';
+
+        const combSaidaPct = parseCombustivelValor(r.combustivelSaida);
+        const combRetornoPct = r.status === 'CONCLUIDO' ? parseCombustivelValor(r.combustivelChegada) : null;
+
+        return {
+          saida: dataHoraSaidaStr,
+          retorno: dataHoraRetornoStr,
+          veiculo: r.veiculo || '-',
+          motorista: r.nome || '-',
+          ctrlSaida: r.controladorSaida || '-',
+          kmSaida: r.kmSaida ? `${r.kmSaida} km` : '-',
+          combSaidaPct: combSaidaPct,
+          combSaidaStr: `\n${combSaidaPct}%`, // Quebra de linha para posicionar a porcentagem logo abaixo da imagem
+          ctrlRetorno: r.controladorChegada || '-',
+          kmRetorno: r.status === 'CONCLUIDO' ? (r.kmChegada ? `${r.kmChegada} km` : '-') : '-',
+          combRetornoPct: combRetornoPct,
+          combRetornoStr: r.status === 'CONCLUIDO' ? `\n${combRetornoPct}%` : '-',
+          kmRodados: kmRodadosStr,
+          status: r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído'
+        };
       });
+
+      const bodyFormatted = tableData.map(item => [
+        item.veiculo,
+        item.motorista,
+        item.saida,
+        item.retorno,
+        item.ctrlSaida,
+        item.kmSaida,
+        item.combSaidaStr,
+        item.ctrlRetorno,
+        item.kmRetorno,
+        item.combRetornoStr,
+        item.kmRodados,
+        item.status
+      ]);
 
       doc.autoTable({
         head: [[
-          'ID', 
-          'Data', 
           'Veículo', 
           'Motorista', 
+          'Saída (Data/Hora)', 
+          'Retorno (Data/Hora)', 
           'Ctrl. Saída', 
-          'Hora Saída', 
           'KM Saída', 
           'Comb. Saída', 
           'Ctrl. Retorno', 
-          'Hora Ret.', 
           'KM Ret.', 
-          'Comb. Ret.', 
+          'Comb. Retorno', 
           'KM Rodados',
           'Status'
         ]],
-        body: tableData,
+        body: bodyFormatted,
         startY: 28,
         margin: { bottom: 20 },
         styles: { 
           fontSize: 7, 
-          cellPadding: 2, 
+          cellPadding: 3, 
           halign: 'center', 
           valign: 'middle' 
         },
@@ -633,6 +727,24 @@
         },
         alternateRowStyles: { 
           fillColor: [245, 246, 249] 
+        },
+        didDrawCell: function (data) {
+          if (data.section === 'body') {
+            const rowIndex = data.row.index;
+            const itemData = tableData[rowIndex];
+
+            // Coluna Comb. Saída (Índice 6)
+            if (data.column.index === 6 && itemData.combSaidaPct !== null) {
+              const imgData = gerarImagemMarcadorBase64(itemData.combSaidaPct);
+              doc.addImage(imgData, 'PNG', data.cell.x + (data.cell.width / 2) - 10, data.cell.y + 2, 20, 5);
+            }
+
+            // Coluna Comb. Retorno (Índice 9)
+            if (data.column.index === 9 && itemData.combRetornoPct !== null) {
+              const imgData = gerarImagemMarcadorBase64(itemData.combRetornoPct);
+              doc.addImage(imgData, 'PNG', data.cell.x + (data.cell.width / 2) - 10, data.cell.y + 2, 20, 5);
+            }
+          }
         },
         didDrawPage: function (data) {
           const pageCount = doc.internal.getNumberOfPages();
