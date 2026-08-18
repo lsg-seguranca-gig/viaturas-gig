@@ -59,7 +59,7 @@
 
     .app-container {
       width: 100%;
-      max-width: 1380px;
+      max-width: 1240px;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -251,41 +251,6 @@
 
     .badge-transito { background-color: rgba(245, 158, 11, 0.15); color: var(--warning); }
     .badge-concluido { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
-
-    /* Estilos do Marcador Visual de Combustível */
-    .fuel-container {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 90px;
-    }
-
-    .fuel-text {
-      font-weight: 700;
-      font-size: 0.8rem;
-    }
-
-    .fuel-bar-bg {
-      width: 100%;
-      height: 8px;
-      background-color: var(--border-color);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .fuel-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.3s ease;
-    }
-
-    .fuel-img-icon {
-      max-width: 80px;
-      max-height: 28px;
-      object-fit: contain;
-      display: block;
-      margin-top: 2px;
-    }
   </style>
 </head>
 <body>
@@ -380,13 +345,13 @@
         <table>
           <thead>
             <tr>
+              <th>ID</th>
               <th>Status</th>
               <th>Veículo</th>
               <th>Motorista</th>
-              <th>Saída (Data / Hora / KM)</th>
-              <th>Comb. Saída</th>
-              <th>Retorno (Hora / KM)</th>
-              <th>Comb. Retorno</th>
+              <th>Saída (Data / Hora / Combustível)</th>
+              <th>Retorno (Hora / Combustível)</th>
+              <th>KM Rodados</th>
               <th>Controladores (S / R)</th>
               <th>Obs / Destino</th>
             </tr>
@@ -398,84 +363,10 @@
   </div>
 
   <script>
-    // Uso exclusivo da API na Vercel
+    // Uso exclusivo da API na Vercel (bypassa o bloqueio da empresa)
     const API_URL = "/api/gas";
     let todosRegistros = [];
     let registrosFiltrados = [];
-
-    function formatarData(valorData) {
-      if (!valorData || valorData === '-') return '-';
-
-      if (typeof valorData === 'string' && valorData.includes('-')) {
-        const partes = valorData.split('T')[0].split('-');
-        if (partes.length === 3) {
-          return `${partes[2]}/${partes[1]}/${partes[0]}`;
-        }
-      }
-
-      const d = new Date(valorData);
-      if (isNaN(d.getTime())) return valorData;
-
-      const dia = String(d.getDate()).padStart(2, '0');
-      const mes = String(d.getMonth() + 1).padStart(2, '0');
-      const ano = d.getFullYear();
-
-      return `${dia}/${mes}/${ano}`;
-    }
-
-    function formatarHora(valorHora) {
-      if (!valorHora || valorHora === '-') return '-';
-      if (typeof valorHora === 'string' && valorHora.includes(':')) {
-        const partes = valorHora.split(':');
-        return `${partes[0].padStart(2, '0')}:${partes[1].padStart(2, '0')}`;
-      }
-      return valorHora;
-    }
-
-    // Converte valor de combustível em porcentagem numérica
-    function extrairPorcentagemCombustivel(valor) {
-      if (!valor || valor === '-') return 0;
-      let texto = String(valor).toLowerCase().trim();
-
-      if (texto.includes('100') || texto.includes('cheio') || texto.includes('1/1') || texto.includes('4/4')) return 100;
-      if (texto.includes('75') || texto.includes('3/4')) return 75;
-      if (texto.includes('50') || texto.includes('1/2') || texto.includes('meio')) return 50;
-      if (texto.includes('25') || texto.includes('1/4')) return 25;
-      if (texto.includes('reserva') || texto.includes('0')) return 10;
-
-      const num = parseInt(texto.replace(/\D/g, ''));
-      return !isNaN(num) ? Math.min(Math.max(num, 0), 100) : 50;
-    }
-
-    // Cor do marcador de combustível com base no nível
-    function obterCorCombustivel(porcentagem) {
-      if (porcentagem <= 20) return '#ef4444'; // Vermelho (Alerta)
-      if (porcentagem <= 50) return '#f59e0b'; // Amarelo
-      return '#10b981';                        // Verde
-    }
-
-    // Renderiza a porcentagem e o marcador visual do combustível
-    function renderizarMarcadorCombustivel(valorCombustivel, urlImagem) {
-      if (!valorCombustivel || valorCombustivel === '-') return '-';
-
-      const porcentagem = extrairPorcentagemCombustivel(valorCombustivel);
-      const corBarra = obterCorCombustivel(porcentagem);
-
-      let htmlImagem = '';
-      if (urlImagem && urlImagem.trim() !== '' && urlImagem !== '-') {
-        htmlImagem = `<img src="${urlImagem}" alt="Marcador" class="fuel-img-icon" onerror="this.style.display='none'">`;
-      }
-
-      return `
-        <div class="fuel-container">
-          <span class="fuel-text">⛽ ${valorCombustivel}</span>
-          <div class="fuel-bar-bg" title="Nível: ${porcentagem}%">
-            <div class="fuel-bar-fill" style="width: ${porcentagem}%; background-color: ${corBarra};"></div>
-          </div>
-          ${htmlImagem}
-        </div>
-      `;
-    }
 
     async function loadData() {
       try {
@@ -550,7 +441,16 @@
         const tr = document.createElement('tr');
         const isEmTransito = item.status === 'EM_TRANSITO';
 
+        let kmRodadosText = '-';
+        if (!isEmTransito && item.kmChegada && item.kmSaida) {
+          const dif = parseFloat(item.kmChegada) - parseFloat(item.kmSaida);
+          if (!isNaN(dif) && dif >= 0) {
+            kmRodadosText = `${dif} km`;
+          }
+        }
+
         tr.innerHTML = `
+          <td><small><strong>${item.id || '-'}</strong></small></td>
           <td>
             ${isEmTransito 
               ? `<span class="badge badge-transito">Em Trânsito</span>` 
@@ -559,21 +459,14 @@
           <td><strong>${item.veiculo}</strong></td>
           <td>${item.nome}</td>
           <td>
-            📅 ${formatarData(item.data)}<br>
-            ⏰ ${formatarHora(item.horarioSaida)}<br>
-            📏 ${item.kmSaida ? item.kmSaida + ' km' : '-'}
-          </td>
-          <td>${renderizarMarcadorCombustivel(item.combustivelSaida, item.imgCombustivelSaida || item.fotoSaida)}</td>
-          <td>
-            ${isEmTransito 
-              ? '<em>Em andamento</em>' 
-              : `⏰ ${formatarHora(item.horarioChegada)}<br>📏 ${item.kmChegada ? item.kmChegada + ' km' : '-'}`}
+            📅 ${item.data}<br>
+            ⏰ ${item.horarioSaida}<br>
+            ⛽ ${item.combustivelSaida} | 📏 ${item.kmSaida} km
           </td>
           <td>
-            ${isEmTransito 
-              ? '<em>-</em>' 
-              : renderizarMarcadorCombustivel(item.combustivelChegada, item.imgCombustivelChegada || item.fotoChegada)}
+            ${isEmTransito ? '<em>Em andamento</em>' : `⏰ ${item.horarioChegada}<br>⛽ ${item.combustivelChegada} | 📏 ${item.kmChegada} km`}
           </td>
+          <td><strong>${kmRodadosText}</strong></td>
           <td>
             <small><strong>S:</strong> ${item.controladorSaida || '-'}</small><br>
             <small><strong>R:</strong> ${item.controladorChegada || '-'}</small>
@@ -617,22 +510,32 @@
     }
 
     function exportarExcel() {
-      const dataToExport = registrosFiltrados.map(r => ({
-        "Data": formatarData(r.data),
-        "Veículo": r.veiculo,
-        "Motorista": r.nome,
-        "Controlador Saída": r.controladorSaida,
-        "Hora Saída": formatarHora(r.horarioSaida),
-        "KM Saída": r.kmSaida,
-        "Comb. Saída": r.combustivelSaida,
-        "Obs Saída": r.obsSaida,
-        "Controlador Chegada": r.controladorChegada,
-        "Hora Chegada": formatarHora(r.horarioChegada),
-        "KM Chegada": r.kmChegada,
-        "Comb. Chegada": r.combustivelChegada,
-        "Obs Chegada": r.obsChegada,
-        "Status": r.status
-      }));
+      const dataToExport = registrosFiltrados.map(r => {
+        let kmRodados = '-';
+        if (r.status === 'CONCLUIDO' && r.kmChegada && r.kmSaida) {
+          const dif = parseFloat(r.kmChegada) - parseFloat(r.kmSaida);
+          if (!isNaN(dif) && dif >= 0) kmRodados = dif;
+        }
+
+        return {
+          "ID": r.id,
+          "Data": r.data,
+          "Veículo": r.veiculo,
+          "Motorista": r.nome,
+          "Controlador Saída": r.controladorSaida,
+          "Hora Saída": r.horarioSaida,
+          "KM Saída": r.kmSaida,
+          "Comb. Saída": r.combustivelSaida,
+          "Obs Saída": r.obsSaida,
+          "Controlador Chegada": r.controladorChegada,
+          "Hora Chegada": r.horarioChegada,
+          "KM Chegada": r.kmChegada,
+          "Comb. Chegada": r.combustivelChegada,
+          "KM Rodados": kmRodados,
+          "Obs Chegada": r.obsChegada,
+          "Status": r.status
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(dataToExport);
       const wb = XLSX.utils.book_new();
@@ -670,23 +573,36 @@
       doc.setFont("helvetica", "bold");
       doc.text("Relatório de Controle de Viaturas - Base GIG", 46, 18);
 
-      const tableData = registrosFiltrados.map(r => [
-        formatarData(r.data),
-        r.veiculo || '-',
-        r.nome || '-',
-        r.controladorSaida || '-',
-        formatarHora(r.horarioSaida),
-        r.kmSaida ? `${r.kmSaida} km` : '-',
-        r.combustivelSaida || '-',
-        r.controladorChegada || '-',
-        r.status === 'CONCLUIDO' ? formatarHora(r.horarioChegada) : '-',
-        r.status === 'CONCLUIDO' ? (r.kmChegada ? `${r.kmChegada} km` : '-') : '-',
-        r.status === 'CONCLUIDO' ? (r.combustivelChegada || '-') : '-',
-        r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído'
-      ]);
+      const tableData = registrosFiltrados.map(r => {
+        let kmRodadosStr = '-';
+        if (r.status === 'CONCLUIDO' && r.kmChegada && r.kmSaida) {
+          const dif = parseFloat(r.kmChegada) - parseFloat(r.kmSaida);
+          if (!isNaN(dif) && dif >= 0) {
+            kmRodadosStr = `${dif} km`;
+          }
+        }
+
+        return [
+          r.id || '-',
+          r.data || '-',
+          r.veiculo || '-',
+          r.nome || '-',
+          r.controladorSaida || '-',
+          r.horarioSaida || '-',
+          r.kmSaida ? `${r.kmSaida} km` : '-',
+          r.combustivelSaida || '-',
+          r.controladorChegada || '-',
+          r.status === 'CONCLUIDO' ? (r.horarioChegada || '-') : '-',
+          r.status === 'CONCLUIDO' ? (r.kmChegada ? `${r.kmChegada} km` : '-') : '-',
+          r.status === 'CONCLUIDO' ? (r.combustivelChegada || '-') : '-',
+          kmRodadosStr,
+          r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído'
+        ];
+      });
 
       doc.autoTable({
         head: [[
+          'ID', 
           'Data', 
           'Veículo', 
           'Motorista', 
@@ -698,10 +614,12 @@
           'Hora Ret.', 
           'KM Ret.', 
           'Comb. Ret.', 
+          'KM Rodados',
           'Status'
         ]],
         body: tableData,
         startY: 28,
+        margin: { bottom: 20 },
         styles: { 
           fontSize: 7, 
           cellPadding: 2, 
@@ -715,6 +633,28 @@
         },
         alternateRowStyles: { 
           fillColor: [245, 246, 249] 
+        },
+        didDrawPage: function (data) {
+          const pageCount = doc.internal.getNumberOfPages();
+          const pageCurrent = data.pageNumber;
+          
+          const now = new Date();
+          const dateStr = now.toLocaleDateString('pt-BR');
+          const timeStr = now.toLocaleTimeString('pt-BR');
+
+          const footerTextLeft = `Gerado em: ${dateStr} às ${timeStr} | Caterair Serviços de Bordo e Hotelaria LTDA - Base GIG`;
+          const footerTextRight = `Página ${pageCurrent} de ${pageCount}`;
+
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(100);
+
+          const pageSize = doc.internal.pageSize;
+          const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+          const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
+
+          doc.text(footerTextLeft, 14, pageHeight - 10);
+          doc.text(footerTextRight, pageWidth - 14, pageHeight - 10, { align: "right" });
         }
       });
 
