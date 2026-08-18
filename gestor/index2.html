@@ -388,19 +388,26 @@
   </div>
 
   <script>
-    // Uso exclusivo da API na Vercel (bypassa o bloqueio da empresa)
     const API_URL = "/api/gas";
     let todosRegistros = [];
     let registrosFiltrados = [];
 
-    // Função auxiliar para extrair o valor numérico de porcentagem do marcador de combustível
+    // Converte datas no formato aaaa-mm-dd para dd/mm/aaaa
+    function formatarDataBR(dataIso) {
+      if (!dataIso || dataIso === '-') return '-';
+      const partes = String(dataIso).split('T')[0].split('-');
+      if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+      }
+      return dataIso;
+    }
+
     function parseCombustivelValor(val) {
       if (!val) return 0;
       const num = parseFloat(String(val).replace('%', '').trim());
       return isNaN(num) ? 0 : num;
     }
 
-    // Renderiza a barra visual + texto da porcentagem para a tabela HTML
     function renderizarMarcadorCombustivelHTML(valorCombustivel) {
       if (!valorCombustivel || valorCombustivel === '-') return '-';
       const pct = parseCombustivelValor(valorCombustivel);
@@ -417,23 +424,19 @@
       `;
     }
 
-    // Gera a imagem Base64 do gráfico do marcador para ser inserida no PDF
     function gerarImagemMarcadorBase64(valorCombustivel) {
       const pct = parseCombustivelValor(valorCombustivel);
       const canvas = document.createElement('canvas');
       canvas.width = 60;
-      canvas.height = 14;
+      canvas.height = 12;
       const ctx = canvas.getContext('2d');
 
-      // Fundo do indicador
       ctx.fillStyle = '#e5e7eb';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Preenchimento do combustível
       ctx.fillStyle = pct <= 20 ? '#ef4444' : '#10b981';
       ctx.fillRect(0, 0, (canvas.width * pct) / 100, canvas.height);
 
-      // Borda
       ctx.strokeStyle = '#9ca3af';
       ctx.lineWidth = 1;
       ctx.strokeRect(0, 0, canvas.width, canvas.height);
@@ -522,10 +525,13 @@
           }
         }
 
-        const saidaDataHora = `📅 ${item.data || '-'}<br>⏰ ${item.horarioSaida || '-'}`;
+        const dataSaidaBR = formatarDataBR(item.data);
+        const dataRetornoBR = formatarDataBR(item.dataChegada || item.data);
+
+        const saidaDataHora = `📅 ${dataSaidaBR}<br>⏰ ${item.horarioSaida || '-'}`;
         const retornoDataHora = isEmTransito 
           ? '<em>Em andamento</em>' 
-          : `📅 ${item.dataChegada || item.data || '-'}<br>⏰ ${item.horarioChegada || '-'}`;
+          : `📅 ${dataRetornoBR}<br>⏰ ${item.horarioChegada || '-'}`;
 
         tr.innerHTML = `
           <td>
@@ -591,9 +597,9 @@
         }
 
         return {
-          "Data Saída": r.data,
+          "Data Saída": formatarDataBR(r.data),
           "Hora Saída": r.horarioSaida,
-          "Data Retorno": r.dataChegada || r.data,
+          "Data Retorno": formatarDataBR(r.dataChegada || r.data),
           "Hora Retorno": r.horarioChegada || '-',
           "Veículo": r.veiculo,
           "Motorista": r.nome,
@@ -655,9 +661,12 @@
           }
         }
 
-        const dataHoraSaidaStr = `${r.data || '-'}\n${r.horarioSaida || '-'}`;
+        const dataSaidaBR = formatarDataBR(r.data);
+        const dataRetornoBR = formatarDataBR(r.dataChegada || r.data);
+
+        const dataHoraSaidaStr = `${dataSaidaBR}\n${r.horarioSaida || '-'}`;
         const dataHoraRetornoStr = r.status === 'CONCLUIDO' 
-          ? `${r.dataChegada || r.data || '-'}\n${r.horarioChegada || '-'}` 
+          ? `${dataRetornoBR}\n${r.horarioChegada || '-'}` 
           : 'Em Trânsito';
 
         const combSaidaPct = parseCombustivelValor(r.combustivelSaida);
@@ -671,11 +680,9 @@
           ctrlSaida: r.controladorSaida || '-',
           kmSaida: r.kmSaida ? `${r.kmSaida} km` : '-',
           combSaidaPct: combSaidaPct,
-          combSaidaStr: `\n${combSaidaPct}%`, // Quebra de linha para posicionar a porcentagem logo abaixo da imagem
           ctrlRetorno: r.controladorChegada || '-',
           kmRetorno: r.status === 'CONCLUIDO' ? (r.kmChegada ? `${r.kmChegada} km` : '-') : '-',
           combRetornoPct: combRetornoPct,
-          combRetornoStr: r.status === 'CONCLUIDO' ? `\n${combRetornoPct}%` : '-',
           kmRodados: kmRodadosStr,
           status: r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído'
         };
@@ -688,10 +695,10 @@
         item.retorno,
         item.ctrlSaida,
         item.kmSaida,
-        item.combSaidaStr,
+        '', // Reservado para rendering via canvas didDrawCell
         item.ctrlRetorno,
         item.kmRetorno,
-        item.combRetornoStr,
+        '', // Reservado para rendering via canvas didDrawCell
         item.kmRodados,
         item.status
       ]);
@@ -733,16 +740,31 @@
             const rowIndex = data.row.index;
             const itemData = tableData[rowIndex];
 
+            // Renderiza o gráfico e o texto separadamente nas colunas de combustível
+            const desenharCombustivelNoPdf = (pct) => {
+              if (pct === null || pct === undefined) return;
+              const imgData = gerarImagemMarcadorBase64(pct);
+              const imgWidth = 16;
+              const imgHeight = 4;
+              const imgX = data.cell.x + (data.cell.width / 2) - (imgWidth / 2);
+              const imgY = data.cell.y + 2;
+
+              doc.addImage(imgData, 'PNG', imgX, imgY, imgWidth, imgHeight);
+
+              doc.setFontSize(7);
+              doc.setFont("helvetica", "normal");
+              doc.setTextColor(50);
+              doc.text(`${pct}%`, data.cell.x + (data.cell.width / 2), imgY + imgHeight + 4, { align: 'center' });
+            };
+
             // Coluna Comb. Saída (Índice 6)
-            if (data.column.index === 6 && itemData.combSaidaPct !== null) {
-              const imgData = gerarImagemMarcadorBase64(itemData.combSaidaPct);
-              doc.addImage(imgData, 'PNG', data.cell.x + (data.cell.width / 2) - 10, data.cell.y + 2, 20, 5);
+            if (data.column.index === 6) {
+              desenharCombustivelNoPdf(itemData.combSaidaPct);
             }
 
             // Coluna Comb. Retorno (Índice 9)
-            if (data.column.index === 9 && itemData.combRetornoPct !== null) {
-              const imgData = gerarImagemMarcadorBase64(itemData.combRetornoPct);
-              doc.addImage(imgData, 'PNG', data.cell.x + (data.cell.width / 2) - 10, data.cell.y + 2, 20, 5);
+            if (data.column.index === 9) {
+              desenharCombustivelNoPdf(itemData.combRetornoPct);
             }
           }
         },
