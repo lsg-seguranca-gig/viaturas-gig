@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Gestor - Controle de Viaturas LSG GIG</title>
+  <link rel="icon" href="icone lsg.ico" type="image/x-icon" />
 
-  <!-- Bibliotecas externas para relatórios -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -267,7 +267,6 @@
       <a href="../" class="btn-nav">⬅️ Voltar ao Registro</a>
     </header>
 
-    <!-- KPIs -->
     <div class="kpi-grid">
       <div class="kpi-card">
         <span class="kpi-title">Total de Saídas</span>
@@ -287,7 +286,6 @@
       </div>
     </div>
 
-    <!-- Filtros -->
     <div class="card">
       <div class="card-title">🔍 Filtros e Relatórios</div>
 
@@ -340,7 +338,6 @@
       </div>
     </div>
 
-    <!-- Tabela de Registros -->
     <div class="card">
       <div class="card-title">📋 Registros Filtrados</div>
 
@@ -365,6 +362,7 @@
   </div>
 
   <script>
+    // Uso exclusivo da API na Vercel (bypassa o bloqueio da empresa)
     const API_URL = "/api/gas";
     let todosRegistros = [];
     let registrosFiltrados = [];
@@ -382,7 +380,7 @@
         populateDropdowns(data);
         aplicarFiltros();
       } catch (error) {
-        console.error("Erro ao carregar dados da API:", error);
+        console.error("Erro ao carregar dados da API Vercel:", error);
       }
     }
 
@@ -527,92 +525,89 @@
     }
 
     async function exportarPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: "landscape" });
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "landscape" });
 
-  // Função auxiliar para carregar a imagem em Base64
-  const getBase64ImageFromUrl = (url) => new Promise((resolve, reject) => {
-    const img = new Image();
-    img.setAttribute("crossOrigin", "anonymous");
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = (error) => reject(error);
-    img.src = url;
-  });
+      const getBase64ImageFromUrl = (url) => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.setAttribute("crossOrigin", "anonymous");
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = (error) => reject(error);
+        img.src = url;
+      });
 
-  try {
-    // Carrega o logo do caminho ../lsg logo.png
-    const logoBase64 = await getBase64ImageFromUrl("../lsg logo.png");
-    doc.addImage(logoBase64, "PNG", 14, 10, 30, 15); // x, y, largura, altura
-  } catch (err) {
-    console.warn("Logo não encontrado ou falha ao carregar a imagem:", err);
-  }
+      try {
+        const logoBase64 = await getBase64ImageFromUrl("../lsg logo.png");
+        doc.addImage(logoBase64, "PNG", 14, 8, 28, 14);
+      } catch (err) {
+        console.warn("Logo não encontrado para a geração do PDF.", err);
+      }
 
-  // Título do Relatório (posicionado ao lado do logo)
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
-  doc.text("Relatório de Controle de Viaturas - Base GIG", 50, 20);
+      doc.setFontSize(15);
+      doc.setFont("helvetica", "bold");
+      doc.text("Relatório de Controle de Viaturas - Base GIG", 46, 18);
 
-  // Mapeamento dos dados com as colunas separadas
-  const tableData = registrosFiltrados.map(r => [
-    r.id || '-',
-    r.data || '-',
-    r.veiculo || '-',
-    r.nome || '-',
-    r.controladorSaida || '-',
-    r.horarioSaida || '-',
-    r.kmSaida ? `${r.kmSaida} km` : '-',
-    r.combustivelSaida || '-',
-    r.controladorChegada || '-',
-    r.status === 'CONCLUIDO' ? (r.horarioChegada || '-') : '-',
-    r.status === 'CONCLUIDO' ? (r.kmChegada ? `${r.kmChegada} km` : '-') : '-',
-    r.status === 'CONCLUIDO' ? (r.combustivelChegada || '-') : '-',
-    r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído'
-  ]);
+      const tableData = registrosFiltrados.map(r => [
+        r.id || '-',
+        r.data || '-',
+        r.veiculo || '-',
+        r.nome || '-',
+        r.controladorSaida || '-',
+        r.horarioSaida || '-',
+        r.kmSaida ? `${r.kmSaida} km` : '-',
+        r.combustivelSaida || '-',
+        r.controladorChegada || '-',
+        r.status === 'CONCLUIDO' ? (r.horarioChegada || '-') : '-',
+        r.status === 'CONCLUIDO' ? (r.kmChegada ? `${r.kmChegada} km` : '-') : '-',
+        r.status === 'CONCLUIDO' ? (r.combustivelChegada || '-') : '-',
+        r.status === 'EM_TRANSITO' ? 'Em Trânsito' : 'Concluído'
+      ]);
 
-  // Geração da Tabela no PDF
-  doc.autoTable({
-    head: [[
-      'ID', 
-      'Data', 
-      'Veículo', 
-      'Motorista', 
-      'Controlador Saída', 
-      'Hora Saída', 
-      'KM Saída', 
-      'Comb. Saída', 
-      'Controlador Retorno', 
-      'Hora Retorno', 
-      'KM Retorno', 
-      'Comb. Retorno', 
-      'Status'
-    ]],
-    body: tableData,
-    startY: 32,
-    styles: { 
-      fontSize: 7, 
-      cellPadding: 2, 
-      halign: 'center', 
-      valign: 'middle' 
-    },
-    headStyles: { 
-      fillColor: [0, 43, 73], 
-      textColor: [255, 255, 255], 
-      fontStyle: 'bold' 
-    },
-    alternateRowStyles: { 
-      fillColor: [245, 246, 249] 
+      doc.autoTable({
+        head: [[
+          'ID', 
+          'Data', 
+          'Veículo', 
+          'Motorista', 
+          'Ctrl. Saída', 
+          'Hora Saída', 
+          'KM Saída', 
+          'Comb. Saída', 
+          'Ctrl. Retorno', 
+          'Hora Ret.', 
+          'KM Ret.', 
+          'Comb. Ret.', 
+          'Status'
+        ]],
+        body: tableData,
+        startY: 28,
+        styles: { 
+          fontSize: 7, 
+          cellPadding: 2, 
+          halign: 'center', 
+          valign: 'middle' 
+        },
+        headStyles: { 
+          fillColor: [0, 43, 73], 
+          textColor: [255, 255, 255], 
+          fontStyle: 'bold' 
+        },
+        alternateRowStyles: { 
+          fillColor: [245, 246, 249] 
+        }
+      });
+
+      doc.save("Relatorio_Viaturas_LSG.pdf");
     }
-  });
 
-  doc.save("Relatorio_Viaturas_LSG.pdf");
-}
+    loadData();
   </script>
 </body>
 </html>
