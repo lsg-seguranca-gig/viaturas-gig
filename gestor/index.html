@@ -345,12 +345,13 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th>
               <th>Status</th>
               <th>Veículo</th>
               <th>Motorista</th>
-              <th>Saída (Data / Hora / Combustível)</th>
-              <th>Retorno (Hora / Combustível)</th>
+              <th>Saída (Data / Hora)</th>
+              <th>Retorno (Hora)</th>
+              <th>Combustível (S / R)</th>
+              <th>KM (S / R)</th>
               <th>Controladores (S / R)</th>
               <th>Obs / Destino</th>
             </tr>
@@ -362,7 +363,6 @@
   </div>
 
   <script>
-    // Uso exclusivo da API na Vercel (bypassa o bloqueio da empresa)
     const API_URL = "/api/gas";
     let todosRegistros = [];
     let registrosFiltrados = [];
@@ -427,21 +427,30 @@
       updateKPIs();
     }
 
+    function formatarDataBR(dataStr) {
+      if (!dataStr) return '-';
+      const partes = dataStr.split('-');
+      if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+      }
+      return dataStr;
+    }
+
     function renderTable() {
       const tbody = document.getElementById('gestorTableBody');
       tbody.innerHTML = '';
 
       if (registrosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
         return;
       }
 
       [...registrosFiltrados].reverse().forEach(item => {
         const tr = document.createElement('tr');
         const isEmTransito = item.status === 'EM_TRANSITO';
+        const dataBR = formatarDataBR(item.data);
 
         tr.innerHTML = `
-          <td><small><strong>${item.id || '-'}</strong></small></td>
           <td>
             ${isEmTransito 
               ? `<span class="badge badge-transito">Em Trânsito</span>` 
@@ -450,12 +459,19 @@
           <td><strong>${item.veiculo}</strong></td>
           <td>${item.nome}</td>
           <td>
-            📅 ${item.data}<br>
-            ⏰ ${item.horarioSaida}<br>
-            ⛽ ${item.combustivelSaida} | 📏 ${item.kmSaida} km
+            📅 ${dataBR}<br>
+            ⏰ ${item.horarioSaida || '-'}
           </td>
           <td>
-            ${isEmTransito ? '<em>Em andamento</em>' : `⏰ ${item.horarioChegada}<br>⛽ ${item.combustivelChegada} | 📏 ${item.kmChegada} km`}
+            ${isEmTransito ? '<em>Em andamento</em>' : `⏰ ${item.horarioChegada || '-'}`}
+          </td>
+          <td>
+            <small><strong>S:</strong> ${item.combustivelSaida || '-'}</small><br>
+            <small><strong>R:</strong> ${isEmTransito ? '-' : (item.combustivelChegada || '-')}</small>
+          </td>
+          <td>
+            <small><strong>S:</strong> ${item.kmSaida ? item.kmSaida + ' km' : '-'}</small><br>
+            <small><strong>R:</strong> ${isEmTransito ? '-' : (item.kmChegada ? item.kmChegada + ' km' : '-')}</small>
           </td>
           <td>
             <small><strong>S:</strong> ${item.controladorSaida || '-'}</small><br>
@@ -502,7 +518,7 @@
     function exportarExcel() {
       const dataToExport = registrosFiltrados.map(r => ({
         "ID": r.id,
-        "Data": r.data,
+        "Data": formatarDataBR(r.data),
         "Veículo": r.veiculo,
         "Motorista": r.nome,
         "Controlador Saída": r.controladorSaida,
@@ -556,7 +572,7 @@
 
       const tableData = registrosFiltrados.map(r => [
         r.id || '-',
-        r.data || '-',
+        formatarDataBR(r.data) || '-',
         r.veiculo || '-',
         r.nome || '-',
         r.controladorSaida || '-',
