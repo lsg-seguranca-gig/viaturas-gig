@@ -59,7 +59,7 @@
 
     .app-container {
       width: 100%;
-      max-width: 1240px;
+      max-width: 1300px;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -117,7 +117,6 @@
       gap: 6px;
     }
 
-    /* KPIs Grid */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -166,7 +165,6 @@
       gap: 8px;
     }
 
-    /* Layout dos Filtros */
     .filter-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -218,28 +216,29 @@
     .btn-pdf { background-color: var(--accent); color: white; }
     .btn-reset { background-color: var(--text-muted); color: white; }
 
-    /* Tabela */
     .table-container { overflow-x: auto; margin-top: 16px; }
 
     table {
       width: 100%;
       border-collapse: collapse;
       text-align: left;
-      font-size: 0.85rem;
+      font-size: 0.825rem;
     }
 
     th {
       background-color: var(--table-header);
       color: var(--text-muted);
       font-weight: 700;
-      padding: 12px;
+      padding: 10px 12px;
       border-bottom: 2px solid var(--border-color);
+      white-space: nowrap;
     }
 
     td {
-      padding: 12px;
+      padding: 10px 12px;
       border-bottom: 1px solid var(--border-color);
       vertical-align: middle;
+      white-space: nowrap;
     }
 
     .badge {
@@ -349,9 +348,11 @@
               <th>Veículo</th>
               <th>Motorista</th>
               <th>Saída (Data / Hora)</th>
-              <th>Retorno (Hora)</th>
-              <th>Combustível (S / R)</th>
-              <th>KM (S / R)</th>
+              <th>Retorno (Data / Hora)</th>
+              <th>Comb. Saída</th>
+              <th>Comb. Retorno</th>
+              <th>KM Saída</th>
+              <th>KM Retorno</th>
               <th>Controladores (S / R)</th>
               <th>Obs / Destino</th>
             </tr>
@@ -441,14 +442,16 @@
       tbody.innerHTML = '';
 
       if (registrosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
         return;
       }
 
       [...registrosFiltrados].reverse().forEach(item => {
         const tr = document.createElement('tr');
         const isEmTransito = item.status === 'EM_TRANSITO';
-        const dataBR = formatarDataBR(item.data);
+        
+        const dataSaidaBR = formatarDataBR(item.data);
+        const dataChegadaBR = item.dataChegada ? formatarDataBR(item.dataChegada) : dataSaidaBR;
 
         tr.innerHTML = `
           <td>
@@ -456,23 +459,21 @@
               ? `<span class="badge badge-transito">Em Trânsito</span>` 
               : `<span class="badge badge-concluido">Concluído</span>`}
           </td>
-          <td><strong>${item.veiculo}</strong></td>
-          <td>${item.nome}</td>
+          <td><strong>${item.veiculo || '-'}</strong></td>
+          <td>${item.nome || '-'}</td>
           <td>
-            📅 ${dataBR}<br>
+            📅 ${dataSaidaBR}<br>
             ⏰ ${item.horarioSaida || '-'}
           </td>
           <td>
-            ${isEmTransito ? '<em>Em andamento</em>' : `⏰ ${item.horarioChegada || '-'}`}
+            ${isEmTransito 
+              ? '<em>Em andamento</em>' 
+              : `📅 ${dataChegadaBR}<br>⏰ ${item.horarioChegada || '-'}`}
           </td>
-          <td>
-            <small><strong>S:</strong> ${item.combustivelSaida || '-'}</small><br>
-            <small><strong>R:</strong> ${isEmTransito ? '-' : (item.combustivelChegada || '-')}</small>
-          </td>
-          <td>
-            <small><strong>S:</strong> ${item.kmSaida ? item.kmSaida + ' km' : '-'}</small><br>
-            <small><strong>R:</strong> ${isEmTransito ? '-' : (item.kmChegada ? item.kmChegada + ' km' : '-')}</small>
-          </td>
+          <td>⛽ ${item.combustivelSaida || '-'}</td>
+          <td>⛽ ${isEmTransito ? '-' : (item.combustivelChegada || '-')}</td>
+          <td>📏 ${item.kmSaida ? item.kmSaida + ' km' : '-'}</td>
+          <td>📏 ${isEmTransito ? '-' : (item.kmChegada ? item.kmChegada + ' km' : '-')}</td>
           <td>
             <small><strong>S:</strong> ${item.controladorSaida || '-'}</small><br>
             <small><strong>R:</strong> ${item.controladorChegada || '-'}</small>
@@ -517,8 +518,8 @@
 
     function exportarExcel() {
       const dataToExport = registrosFiltrados.map(r => ({
-        "ID": r.id,
-        "Data": formatarDataBR(r.data),
+        "Data Saída": formatarDataBR(r.data),
+        "Data Retorno": r.dataChegada ? formatarDataBR(r.dataChegada) : formatarDataBR(r.data),
         "Veículo": r.veiculo,
         "Motorista": r.nome,
         "Controlador Saída": r.controladorSaida,
@@ -571,8 +572,8 @@
       doc.text("Relatório de Controle de Viaturas - Base GIG", 46, 18);
 
       const tableData = registrosFiltrados.map(r => [
-        r.id || '-',
         formatarDataBR(r.data) || '-',
+        r.status === 'CONCLUIDO' ? (formatarDataBR(r.dataChegada) || formatarDataBR(r.data)) : '-',
         r.veiculo || '-',
         r.nome || '-',
         r.controladorSaida || '-',
@@ -588,8 +589,8 @@
 
       doc.autoTable({
         head: [[
-          'ID', 
-          'Data', 
+          'Data Saída', 
+          'Data Ret.',
           'Veículo', 
           'Motorista', 
           'Ctrl. Saída', 
