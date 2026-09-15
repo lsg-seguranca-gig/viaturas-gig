@@ -159,6 +159,8 @@
       margin-bottom: 20px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .card-title {
@@ -168,6 +170,34 @@
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+
+    /* Estilos dos Botões de Filtro */
+    .filter-container {
+      display: flex;
+      gap: 6px;
+      background: var(--bg-body);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-filter {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-filter.active {
+      background: var(--card-bg);
+      color: var(--primary);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
     .form-grid {
@@ -289,7 +319,6 @@
     .status-active { background-color: rgba(245, 158, 11, 0.15); color: #d97706; }
     .status-completed { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
 
-    /* --- CSS REVISADO DO MODAL --- */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -543,12 +572,17 @@
       </form>
     </div>
 
-    <!-- Histórico -->
+    <!-- Histórico com Filtros -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <span>📋</span>
           <span>Histórico de Registros</span>
+        </div>
+        <div class="filter-container">
+          <button class="btn-filter active" id="filterAll" onclick="setFilter('ALL')">Todos</button>
+          <button class="btn-filter" id="filterTransit" onclick="setFilter('EM_TRANSITO')">Em Trânsito 🚘</button>
+          <button class="btn-filter" id="filterCompleted" onclick="setFilter('CONCLUIDO')">Concluídos ✓</button>
         </div>
       </div>
 
@@ -662,11 +696,19 @@
   <script>
   const API_URL = "/api/gas";
   let registros = JSON.parse(localStorage.getItem("lsg_frota_registros")) || [];
+  let currentFilter = "ALL";
 
-  // Função auxiliar para formatar datas (AAAA-MM-DD -> DD/MM/AAAA)
+  function setFilter(filterType) {
+    currentFilter = filterType;
+    document.getElementById("filterAll").classList.toggle("active", filterType === "ALL");
+    document.getElementById("filterTransit").classList.toggle("active", filterType === "EM_TRANSITO");
+    document.getElementById("filterCompleted").classList.toggle("active", filterType === "CONCLUIDO");
+    renderHistory();
+  }
+
   function formatarDataBR(dataStr) {
     if (!dataStr) return "-";
-    if (dataStr.includes("/")) return dataStr; // Se já estiver formatada, retorna o original
+    if (dataStr.includes("/")) return dataStr;
     const partes = dataStr.split("-");
     if (partes.length === 3) {
       return `${partes[2]}/${partes[1]}/${partes[0]}`;
@@ -674,7 +716,6 @@
     return dataStr;
   }
 
-  // --- GERENCIAMENTO DE TEMA ---
   function initTheme() {
     const savedTheme = localStorage.getItem("lsg_theme") || "light";
     document.documentElement.setAttribute("data-theme", savedTheme);
@@ -701,7 +742,6 @@
     }
   }
 
-  // --- CARREGAR CADASTROS E HISTÓRICO REALTIME ---
   async function loadCadastrosAndHistory() {
     try {
       const response = await fetch(API_URL);
@@ -729,7 +769,6 @@
         selectControladorRetorno.innerHTML = options;
       }
 
-      // Sincroniza o histórico com os registros vindos do Google Sheets
       if (data.registros && Array.isArray(data.registros)) {
         registros = data.registros;
         saveAndRender();
@@ -739,7 +778,6 @@
     }
   }
 
-  // --- MEDIDOR DE COMBUSTÍVEL ---
   function setupGauge(svgId, needleId, labelId, hiddenInputId) {
     const svg = document.getElementById(svgId);
     const needleGroup = document.getElementById(needleId);
@@ -823,12 +861,17 @@
     const pendentes = registros.filter(r => r.status === 'EM_TRANSITO');
     counter.innerText = `${pendentes.length} em trânsito`;
 
-    if (registros.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum veículo registrado até o momento.</td></tr>`;
+    let registrosExibidos = [...registros];
+    if (currentFilter !== "ALL") {
+      registrosExibidos = registrosExibidos.filter(r => r.status === currentFilter);
+    }
+
+    if (registrosExibidos.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum veículo encontrado para este filtro.</td></tr>`;
       return;
     }
 
-    [...registros].reverse().forEach(item => {
+    registrosExibidos.reverse().forEach(item => {
       const tr = document.createElement('tr');
       const isEmTransito = item.status === 'EM_TRANSITO';
       const dataFormatada = formatarDataBR(item.data);
@@ -889,7 +932,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dataObj)
       });
-      // Recarrega os dados para garantir sincronia com a planilha
       loadCadastrosAndHistory();
     } catch (err) {
       console.error("Erro ao enviar dados para a API:", err);
