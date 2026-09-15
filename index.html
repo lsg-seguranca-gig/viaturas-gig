@@ -793,7 +793,12 @@
 
   function initDefaultDateTime() {
     const now = new Date();
-    document.getElementById('saidaData').valueAsDate = now;
+    const ano = now.getFullYear();
+    const mes = String(now.getMonth() + 1).padStart(2, '0');
+    const dia = String(now.getDate()).padStart(2, '0');
+    
+    document.getElementById('saidaData').value = `${ano}-${mes}-${dia}`;
+
     const horaStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     document.getElementById('saidaHorario').value = horaStr;
   }
